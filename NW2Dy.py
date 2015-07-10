@@ -9,7 +9,7 @@ def readPreamble(preamble, outfile):
          output.write("%s\n" %line)
    output.close
 
-def rwOverlap(infile, outfile):
+def rwOverlap(infile, outfile, sort):
    output=open(outfile, 'a')
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
@@ -45,7 +45,8 @@ def rwOverlap(infile, outfile):
          for j in range(dim):
             output.write(u"  %2i  "%(j+1))
             for i in range(n,min(n+5,dim)):
-               output.write(u"  %0.10E " %(overlap[i][j])) #convert the repective element
+               #output.write(u"  %0.10E " %(overlap[i][j])) #convert the repective element
+               output.write(u"  %0.10E " %(overlap[sort[i]][sort[j]])) #convert the repective element
             output.write("\n")
    output.close
 
@@ -57,7 +58,6 @@ def printOrbitals(infile,outfile):
    temp=re.findall(r"(?<=ROHF Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
    MOvect=temp.strip().split("Vector")
    nbf=len(MOvect)-1 #because the first element is not an orbital vector
-   #now, fet the sorting and the first row to be printed
    MOs, sort=getOrbitals( MOvect[1] )
    #obtain the coefficients
    indMatrix=getCoefficients(MOvect[1:])
@@ -72,9 +72,23 @@ def printOrbitals(infile,outfile):
          for j in range(len(MOs)):
             output.write(u"  %2i    %s"%(j+1, MOs[j]))
             for i in range(n,min(n+5,nbf)):
-               output.write(u"  %0.10E " %(indMatrix[sort[i]][j])) #convert the repective element
+               output.write(u"  %0.10E " %(indMatrix[i][sort[j]])) #convert the repective element
+            print sort[j], indMatrix[0][sort[j]] #convert the repective element
             output.write("\n")
    output.close
+   return sort
+
+def readOrbitals(infile,outfile):
+   output=open(outfile, 'a')
+   files=open(infile, "r")
+   inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
+   files.close
+   temp=re.findall(r"(?<=ROHF Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
+   MOvect=temp.strip().split("Vector")
+   nbf=len(MOvect)-1 #because the first element is not an orbital vector
+   #now, fet the sorting and the first row to be printed
+   MOs, sort=getOrbitals( MOvect[1] )
+   return MOs, sort
 
 def OrbitalNames(n):
    """ wrong, if more than 21 shells have to be filled (after 8s, there will be errors)
@@ -82,25 +96,25 @@ def OrbitalNames(n):
    names=[]
    n=int(n)
    if n>=1:
-      names.append([str(n)+"s  ",n ,0, 0])
+      names.append([str(n)+"s",n ,0, 0])
    if n>=6:
       names.append([str(n-2)+"f3-",(n-1),3,-3])
       names.append([str(n-2)+"f2-",(n-1),3,-2])
       names.append([str(n-2)+"f1-",(n-1),3,-1])
-      names.append([str(n-2)+"f0 ",(n-1),3, 0])
+      names.append([str(n-2)+"f0",(n-1),3, 0])
       names.append([str(n-2)+"f1+",(n-1),3, 1])
       names.append([str(n-2)+"f2+",(n-1),3, 2])
       names.append([str(n-2)+"f3+",(n-1),3, 3])
    if n>=4:
       names.append([str(n-1)+"d2-",(n-2),2,-2])
       names.append([str(n-1)+"d1-",(n-2),2,-1])
-      names.append([str(n-1)+"d0 ",(n-2),2, 0])
+      names.append([str(n-1)+"d0",(n-2),2, 0])
       names.append([str(n-1)+"d1+",(n-2),2, 1])
       names.append([str(n-1)+"d2+",(n-2),2, 2])
    if n>=2:
-      names.append([str(n)+"px ",n,1,-1])
-      names.append([str(n)+"py ",n,1,0])
-      names.append([str(n)+"pz ",n,1,1])
+      names.append([str(n)+"px",n,1,-1])
+      names.append([str(n)+"py",n,1,0])
+      names.append([str(n)+"pz",n,1,1])
    return names 
 
 def getCoefficients( MOvect ):
@@ -110,12 +124,16 @@ def getCoefficients( MOvect ):
       orbital_nr=[]
       for i in range(len(currMOv)):
          elements.append(currMOv[i].split())
-      if ind==0:
-         coeff=np.zeros(( len(MOvect),len(elements) ))
+         orbital_nr.append(int(elements[i][0]))
 
       #resort elemnts by index
+      index=np.argsort(orbital_nr)
+      if ind==0:
+         coeff=np.zeros(( len(MOvect),len(elements) ))
+      #fill elements into matrix
       for i in range(len(elements)):
-         coeff[ind][i]=float(elements[i][1])
+         coeff[ind][i]=float(elements[index[i]][1])
+         print elements[index[i]]
    return coeff
 
 def getOrbitals( MOvect ):
@@ -143,22 +161,52 @@ def getOrbitals( MOvect ):
    neededSort=[]
    for NA in range(NumAtom):
       electrons=0
-      for a in range(int(shells[NA]), int(shells[NA+1])):
+      n=np.floor(pow(3*(shells[NA+1]-shells[NA]-1),1./3))+1
+      n=int(n) #estimate number of shells.
+      for a in range(int(shells[NA]), int(shells[NA])+n):
          orbitals=OrbitalNames(a-shells[NA]+1)
-         for i in range(int(min(len(orbitals), shells[NA+1]-electrons-shells[NA] ) )):
-            MO.append(orbitals[i][0])
-            n=orbitals[i][1]
-            l=orbitals[i][2]
-            m=orbitals[i][3]
-            neededSort.append(int(str(NA+1)+str(l)+str(m+l)+str(n))) #durty but works...
-         electrons+=len(orbitals)
+         j=0
+         i=0
+         while  i-j < min(len(orbitals), shells[NA+1]-electrons-shells[NA] ):
+            #test, if orbitals coincide with those in  atom
+            #print "start",i, electrons
+            if orbitals[i][0][1:] !=atom[i-j+electrons][3]:
+               #if they are not equal, take next orbital and compare with that one printed
+               print orbitals[i][0][1:],atom[i-j+electrons][3], i,j
+               j+=1
+            else:
+               print orbitals[i][0][1:]
+               MO.append(orbitals[i][0])
+               n=orbitals[i][1]
+               l=orbitals[i][2]
+               m=orbitals[i][3]
+               neededSort.append(int(str(NA+1)+str(l)+str(m+l)+str(n))) #durty but works...
+            i+=1
+         electrons+=len(orbitals)-j
    aoe=np.argsort(neededSort)
    sortMO=[]
-   totalsort=[]
    for i in range(len(aoe)):
-      sortMO.append("%s%s    %s"%(atom[aoe[i]][1],atom[aoe[i]][2],MO[aoe[i]]))
-      totalsort.append(index[aoe[i]])
-   return sortMO, totalsort
+      sortMO.append("%s%s    %4s"%(atom[aoe[i]][1],atom[aoe[i]][2],MO[aoe[i]]))
+   return sortMO, aoe
+
+def getFile(purpose):
+   infile = input("Please type the file for %s :" %(purpose))
+   #check, if this is a valid file
+   return infile
+
+def readCI(CIfile):
+   #open the file 
+   cifi=open(CIfile, "r")
+   #inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
+
+   #through away first two lines
+   #number of states
+   #number of occupied orbitals
+   #total number of orbitals
+   #through away next 4 lines
+   files.close
+
+   return CIcoeff
 
 def main(argv=None):
    assert len(argv)==3, "three input files expected."
@@ -166,8 +214,11 @@ def main(argv=None):
    infile=argv[1]
    outfile=argv[2]
    readPreamble(preamble, outfile)
-   rwOverlap(infile,outfile)
+   MO,sort=readOrbitals(infile,outfile)
+   rwOverlap(infile,outfile, sort)
    printOrbitals(infile,outfile)
+   CIfile=getFile("CI-coefficients")
+   CIcoeff=readCI(CIfile)
 
 if __name__ == "__main__":
    main(sys.argv[1:])
