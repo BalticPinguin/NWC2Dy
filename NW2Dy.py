@@ -55,7 +55,8 @@ def printOrbitals(infile,outfile):
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
    files.close
-   temp=re.findall(r"(?<=ROHF Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
+   #temp=re.findall(r"(?<=ROHF Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
+   temp=re.findall(r"(?<=DFT Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)",  inp, re.M)[-1]
    MOvect=temp.strip().split("Vector")
    nbf=len(MOvect)-1 #because the first element is not an orbital vector
    MOs, sort=getOrbitals( MOvect[1] )
@@ -73,7 +74,6 @@ def printOrbitals(infile,outfile):
             output.write(u"  %2i    %s"%(j+1, MOs[j]))
             for i in range(n,min(n+5,nbf)):
                output.write(u"  %0.10E " %(indMatrix[i][sort[j]])) #convert the repective element
-            print sort[j], indMatrix[0][sort[j]] #convert the repective element
             output.write("\n")
    output.close
    return sort
@@ -83,7 +83,8 @@ def readOrbitals(infile,outfile):
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
    files.close
-   temp=re.findall(r"(?<=ROHF Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
+   #temp=re.findall(r"(?<=ROHF Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
+   temp=re.findall(r"(?<=DFT Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
    MOvect=temp.strip().split("Vector")
    nbf=len(MOvect)-1 #because the first element is not an orbital vector
    #now, fet the sorting and the first row to be printed
@@ -133,7 +134,6 @@ def getCoefficients( MOvect ):
       #fill elements into matrix
       for i in range(len(elements)):
          coeff[ind][i]=float(elements[index[i]][1])
-         print elements[index[i]]
    return coeff
 
 def getOrbitals( MOvect ):
@@ -172,10 +172,8 @@ def getOrbitals( MOvect ):
             #print "start",i, electrons
             if orbitals[i][0][1:] !=atom[i-j+electrons][3]:
                #if they are not equal, take next orbital and compare with that one printed
-               print orbitals[i][0][1:],atom[i-j+electrons][3], i,j
                j+=1
             else:
-               print orbitals[i][0][1:]
                MO.append(orbitals[i][0])
                n=orbitals[i][1]
                l=orbitals[i][2]
@@ -190,23 +188,62 @@ def getOrbitals( MOvect ):
    return sortMO, aoe
 
 def getFile(purpose):
-   infile = input("Please type the file for %s :" %(purpose))
-   #check, if this is a valid file
+   infile = raw_input("Please type the file for %s :" %(purpose))
+   ##########check, if this is a valid file--------------------<<<
    return infile
 
 def readCI(CIfile):
    #open the file 
    cifi=open(CIfile, "r")
-   #inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
-
-   #through away first two lines
+   #throw away first two lines
+   cifi.readline()
+   cifi.readline()
    #number of states
+   nos=int(float(cifi.readline()))
    #number of occupied orbitals
+   noocc=int(float(cifi.readline().strip().split()[0]))
    #total number of orbitals
-   #through away next 4 lines
-   files.close
+   notot=int(float(cifi.readline().strip().split()[0]))
+   nouno=notot-noocc #number of unoccupied orbitals
+   #throw away next 4 lines
+   for i in range(4):
+      cifi.readline()
 
-   return CIcoeff
+   #now, start serious work:
+   CIcoeff=np.zeros((nos,nouno*noocc))
+   CItrans=np.zeros((nos,nouno*noocc,2))
+   for state in range(nos):
+      cifi.readline()
+      cifi.readline()
+      for trans in range(nouno*noocc):
+         CIcoeff[state][trans]=float(cifi.readline())
+         #print " %2d   %.7E   %3d  %3d" %(state, CIcoeff[state][trans], trans/(nouno)+1, noocc+trans%(nouno)+1)
+         CItrans[state][trans]=[trans/(nouno), trans%(nouno)]
+   cifi.close()
+   return CIcoeff, CItrans, noocc, nouno, nos
+
+def printCI(outfile, CIcoeff, transition, noocc, nofree, states):
+   output=open(outfile, 'a')
+   for i in range(states):
+      output.write("\n\nSTATE=%d \n" %i)
+      output.write("Det             Occupation            Coef                 Weight\n")
+      for j in range(noocc*nofree):
+         #print first (counting) number
+         output.write("     %3d                     "%(j+1))
+         #print the occupation of the state
+         for doub in range(int(transition[i][j][0])):
+            output.write("2")
+         output.write("d")
+         for doub in range(int(transition[i][j][0]), noocc-1):
+            output.write("2")
+         for unocc in range(int(transition[i][j][1])):
+            output.write("0")
+         output.write("u")
+         for unocc in range(int(transition[i][j][1]), nofree-1):
+            output.write("0")
+         #print coefficient and weight
+         output.write("     %16.10g         %16.10g\n"%( CIcoeff[i][j], CIcoeff[i][j]*CIcoeff[i][j]))
+   output.close()
 
 def main(argv=None):
    assert len(argv)==3, "three input files expected."
@@ -218,9 +255,10 @@ def main(argv=None):
    rwOverlap(infile,outfile, sort)
    printOrbitals(infile,outfile)
    CIfile=getFile("CI-coefficients")
-   CIcoeff=readCI(CIfile)
+   CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
+   printCI(outfile, CIcoeff, Citrans, noocc, nouno, nos)
 
 if __name__ == "__main__":
    main(sys.argv[1:])
 
-version=0.1
+version=0.2
