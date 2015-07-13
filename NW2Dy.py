@@ -211,14 +211,15 @@ def readCI(CIfile):
 
    #now, start serious work:
    CIcoeff=np.zeros((nos,nouno*noocc))
-   CItrans=np.zeros((nos,nouno*noocc,2))
+   CItrans=np.zeros((nouno*noocc,2))
    for state in range(nos):
       cifi.readline()
       cifi.readline()
       for trans in range(nouno*noocc):
          CIcoeff[state][trans]=float(cifi.readline())
          #print " %2d   %.7E   %3d  %3d" %(state, CIcoeff[state][trans], trans/(nouno)+1, noocc+trans%(nouno)+1)
-         CItrans[state][trans]=[trans/(nouno), trans%(nouno)]
+         if state==0:
+            CItrans[trans]=[trans/(nouno), trans%(nouno)]
    cifi.close()
    return CIcoeff, CItrans, noocc, nouno, nos
 
@@ -226,23 +227,38 @@ def printCI(outfile, CIcoeff, transition, noocc, nofree, states):
    output=open(outfile, 'a')
    for i in range(states):
       output.write("\n\nSTATE=%d \n" %i)
-      output.write("Det             Occupation            Coef                 Weight\n")
+      output.write("Det             Occupation  ")
+      for nomatter in range(noocc+nofree-10):
+         output.write(" ")
+      output.write("    Coef                      Weight\n")
       for j in range(noocc*nofree):
          #print first (counting) number
-         output.write("     %3d                     "%(j+1))
+         output.write("  %3d         "%(j+1))
          #print the occupation of the state
-         for doub in range(int(transition[i][j][0])):
+         for doub in range(min(noocc-1,int(transition[j][0]))):
             output.write("2")
          output.write("d")
-         for doub in range(int(transition[i][j][0]), noocc-1):
+         for doub in range(int(transition[j][0]), noocc-1):
             output.write("2")
-         for unocc in range(int(transition[i][j][1])):
+         for unocc in range(int(transition[j][1])):
             output.write("0")
          output.write("u")
-         for unocc in range(int(transition[i][j][1]), nofree-1):
+         for unocc in range(int(transition[j][1]), nofree-1):
             output.write("0")
          #print coefficient and weight
          output.write("     %16.10g         %16.10g\n"%( CIcoeff[i][j], CIcoeff[i][j]*CIcoeff[i][j]))
+   output.close()
+
+def rwenergy(outfile, infile):
+   output=open(outfile, 'a')
+   files=open(infile, "r")
+   inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
+   files.close()
+   energy=float(re.findall(r"(?<=Total SCF energy =)[\d \-\.]+", inp)[-1])
+   output.write("\nINIEN \n %15.10g"%energy)
+  # ---------------------------------------------------------------------------
+  #   Root   1 singlet a              0.003372417 a.u.                0.0918 eV
+  # ---------------------------------------------------------------------------
    output.close()
 
 def main(argv=None):
@@ -254,8 +270,12 @@ def main(argv=None):
    MO,sort=readOrbitals(infile,outfile)
    rwOverlap(infile,outfile, sort)
    printOrbitals(infile,outfile)
+   rwenergy(outfile,infile)
    CIfile=getFile("CI-coefficients")
    CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
+   #resort states due to previous ones
+   for i in range(len(Citrans)):
+      Citrans[i]=[sort[Citrans[i][0]],sort[Citrans[i][1]] ]
    printCI(outfile, CIcoeff, Citrans, noocc, nouno, nos)
 
 if __name__ == "__main__":
