@@ -9,6 +9,25 @@ def readPreamble(preamble, outfile):
          output.write("%s\n" %line)
    output.close
 
+def writePreamble(outfile, noocc,nouno, nbf,nas):
+   output=open(outfile, 'w')
+   output.write("MOLCAS\n0\n\n")
+   output.write("METHOD\n1\n\n")
+   output.write("FNSPIN\n1\n\n")
+   output.write("INSPIN\n1\n\n")
+   output.write("FMULT\n2\n\n")
+   output.write("IMULT\n2\n\n")
+   output.write("NACTIVE\n%d\n\n"%(noocc+nouno))
+   output.write("NFROZEN\n0\n\n")
+   output.write("FNACTEL\n%d\n\n"%(2*noocc-1))
+   output.write("INACTEL\n%d\n\n"%(2*noocc))
+   outupt.write("NBASF\n%d\n\n"%(nbf))
+   output.write("SFPRINT\n3\n\n")
+   output.write("SOCPRINT\n0\n\n")
+   output.write("FINALWF\n%d  %d\n\n"%(nas,nas))
+   output.write("INITIALWF\n1  1\n\n")
+   output.close()
+
 def rwOverlap(infile, outfile, sort):
    output=open(outfile, 'a')
    files=open(infile, "r")
@@ -223,10 +242,35 @@ def readCI(CIfile):
    cifi.close()
    return CIcoeff, CItrans, noocc, nouno, nos
 
+def readCI2(infile):
+   #open the file 
+   files=open(infile, "r")
+   inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
+   files.close()
+
+   cicoeff=re.findall(r"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n]+", inp)
+   nos=len(cicoeff)
+   for i in range(nos):
+      CI=cicoeff[i].strip().split("\n")[2:] #split into lines and through first and last line away
+      if i==0:
+         noorb=len(CI)-1
+         CIcoeff=np.zeros((nos,noorb))
+         CItrans=np.zeros((noorb,2))
+      for j in range(noorb):
+         transition=CI[j].split()
+         CIcoeff[i][j]=transition[7]
+         if i==0:
+            CItrans[j]=[transition[1],transition[5]]
+   noocc=int(np.max(CItrans[:].T[0]))
+   nouno=int(np.max(CItrans[:].T[1]))-noocc
+   for i in range(noorb):
+      CItrans[i][1]=CItrans[i][1]-noocc
+   return CIcoeff, CItrans, noocc, nouno, nos
+
 def printCI(outfile, CIcoeff, transition, noocc, nofree, states):
    output=open(outfile, 'a')
    for i in range(states):
-      output.write("\n\nSTATE=%d \n" %i)
+      output.write("\n\nSTATE=%d \n" %(i+1))
       output.write("Det             Occupation  ")
       for nomatter in range(noocc+nofree-10):
          output.write(" ")
@@ -261,7 +305,16 @@ def rwenergy(outfile, infile):
   # ---------------------------------------------------------------------------
    output.close()
 
-def main(argv=None):
+def printnorm(CIcoeff):
+   nos=len(CIcoeff)
+   trans=len(CIcoeff[0])
+   for i in range(nos):
+      norm=0
+      for j in range(trans):
+         norm+=CIcoeff[i][j]*CIcoeff[i][j]
+      print norm
+
+def main2(argv=None):
    assert len(argv)==3, "three input files expected."
    preamble=argv[0]
    infile=argv[1]
@@ -271,14 +324,34 @@ def main(argv=None):
    rwOverlap(infile,outfile, sort)
    printOrbitals(infile,outfile)
    rwenergy(outfile,infile)
-   CIfile=getFile("CI-coefficients")
-   CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
+   #CIfile=getFile("CI-coefficients")
+   #CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
+   CIcoeff, Citrans, noocc, nouno, nos=readCI2(infile)
    #resort states due to previous ones
    for i in range(len(Citrans)):
       Citrans[i]=[sort[Citrans[i][0]],sort[Citrans[i][1]] ]
+   printnorm(CIcoeff)
+   printCI(outfile, CIcoeff, Citrans, noocc, nouno, nos)
+
+def main(argv=None):
+   assert len(argv)==3, "three input files expected."
+   fnfile=argv[0]
+   infile=argv[1]
+   outfile=argv[2]
+   MO,sort=readOrbitals(infile,outfile)
+   rwOverlap(infile,outfile, sort)
+   printOrbitals(infile,outfile)
+   rwenergy(outfile,infile)
+   #CIfile=getFile("CI-coefficients")
+   #CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
+   CIcoeff, Citrans, noocc, nouno, nos=readCI2(infile)
+   #resort states due to previous ones
+   for i in range(len(Citrans)):
+      Citrans[i]=[sort[Citrans[i][0]],sort[Citrans[i][1]] ]
+   printnorm(CIcoeff)
    printCI(outfile, CIcoeff, Citrans, noocc, nouno, nos)
 
 if __name__ == "__main__":
    main(sys.argv[1:])
 
-version=0.2
+version=0.3
