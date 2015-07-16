@@ -246,22 +246,29 @@ def readCI2(infile):
    for i in range(len(roots)):
       roots[i]=int(roots[i])
    nos=np.max(roots)
-   cicoeff=re.findall(r"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n]+", inp)
+   #cicoeff=re.findall(r"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n]+", inp)
+   cicoeff=re.findall(r"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n alpha beta]+", inp)
    if len(cicoeff)>nos:
       cicoeff=cicoeff[-nos:] #this gives only last ci-vector
    elif len(cicoeff)<nos:
       assert 1==2, "an error occured. Not all roots found."
    for i in range(nos):
       CI=cicoeff[i].strip().split("\n")[2:] #split into lines and through first and last line away
+      print len(CI)
       if i==0:
          noorb=len(CI)-1
          CIcoeff=np.zeros((nos,noorb))
          CItrans=np.zeros((noorb,2))
       for j in range(noorb):
          transition=CI[j].split()
-         CIcoeff[i][j]=transition[7]
+         CIcoeff[i][j]=transition[-1]
          if i==0:
-            CItrans[j]=[transition[1],transition[5]]
+            if len(transition)==8:
+               CItrans[j]=[transition[1],transition[5]]
+            elif len(transition)==10:
+               CItrans[j]=[transition[1],transition[6]]
+            else:
+               assert 1==2, "an error occured. Structure of CI-vectors unknown: \n %s\n" %transition
    noocc=int(np.max(CItrans[:].T[0]))
    nouno=int(np.max(CItrans[:].T[1]))-noocc
    return CIcoeff, CItrans, noocc, nouno, nos
@@ -296,17 +303,25 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states):
          output.write("     %16.10g         %16.10g\n"%( CIcoeff[i][j], CIcoeff[i][j]*CIcoeff[i][j]))
    output.close()
 
-def rwenergy(outfile, infile):
-   output=open(outfile, 'a')
+def rwenergy(output, infile):
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
    files.close()
    energy=float(re.findall(r"(?<=Total SCF energy =)[\d \-\.]+", inp)[-1])
-   output.write("\nINIEN \n %15.10g"%energy)
-  # ---------------------------------------------------------------------------
-  #   Root   1 singlet a              0.003372417 a.u.                0.0918 eV
-  # ---------------------------------------------------------------------------
-   output.close()
+   output.write("%15.10g\n"%energy)
+   exen=re.findall(r"(?<=Root )[\w \d\.]+ ",inp)
+   roots=[]
+   for i in range(len(exen)):
+      if "." in exen[i]:
+         roots.append(float(exen[i].strip().split()[0]))
+   nos=int(np.max(roots))
+   if "a.u." in exen[-1]:
+      last=-1
+   else:
+      last=-2
+   exen=exen[-nos+last:last] 
+   for i in range(len(exen)):
+      output.write("%15.10g\n"%(float(exen[i].strip().split()[-4])+energy))
 
 def printnorm(CIcoeff):
    nos=len(CIcoeff)
@@ -326,16 +341,23 @@ def main(argv=None):
    ov, dim=rOverlap(infile, sort)
    #CIfile=getFile("CI-coefficients")
    #CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
-   CIcoeff, Citrans, noocc, nouno, nos=readCI2(infile)
-   #resort states due to previous ones
+   FCIcoeff, FCitrans, Fnoocc, Fnouno, Fnos=readCI2(fnfile)
+   ICIcoeff, ICitrans, Inoocc, Inouno, Inos=readCI2(infile)
+   #test, if everything is fine:
 
    #now, start writing to output-file
-   writePreamble(outfile, noocc,nouno, dim)
+   writePreamble(outfile, Inoocc,Inouno, dim)
    printOrbitals(infile,outfile)
    wOverlap(ov,dim,sort,outfile)
    #printnorm(CIcoeff)
-   rwenergy(outfile,infile)
-   printCI(outfile, CIcoeff, Citrans, sort,noocc, nouno, nos)
+   output=open(outfile, 'a')
+   output.write("\nFINEN \n")
+   rwenergy(output,fnfile)
+   output.write("\nINIEN \n")
+   rwenergy(output,infile)
+   output.close()
+   printCI(outfile, FCIcoeff, FCitrans, sort,Fnoocc, Fnouno, Fnos)
+   printCI(outfile, ICIcoeff, ICitrans, sort,Inoocc, Inouno, Inos)
 
 if __name__ == "__main__":
    main(sys.argv[1:])
