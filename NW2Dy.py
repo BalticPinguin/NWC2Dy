@@ -9,16 +9,30 @@ def main(argv=None):
    outfile=argv[2]
    MO,sort,occi=rw.readOrbitals(infile)
    fMO,fsort,occf=rw.readOrbitals(fnfile)
+   #test, if everything is fine:
    if MO!=fMO:
-      print "foo"
+      error=open("error.out", 'w')
+      for i in range(len(MO)):
+         error.write("%.8g   %.8g"%(MO[i], fMO[i]))
+      error.close()
+      assert 1==0, "the MO-vectors don't coinciede. See file error.out"
    if any(sort!=fsort):
-      print "bar"
+      error=open("error.out", 'w')
+      for i in range(len(MO)):
+         error.write("%.8g   %.8g"%(sort[i], fsort[i]))
+      error.close()
+      assert 1==0, "the The sorting-vectors don't coinciede. See file error.out"
    ov, dim=rw.rOverlap(infile, sort)
-   #CIfile=getFile("CI-coefficients")
-   #CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
+   if sum(occi)!=sum(occf)+1:
+      assert 2==1 "the numbers of initial/final electrons seem to be wrong: initial: %i final: %i" %(sum(occi), sum(off))
+ 
+ ######## this is the alternative way: read CI-vectors from extra files
+ #  CIfile=getFile("CI-coefficients")
+ #  CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
+ ########
+
    FCIcoeff, FCitrans, Fnoocc, Fnouno, Fnos=rw.readCI2(fnfile)
    ICIcoeff, ICitrans, Inoocc, Inouno, Inos=rw.readCI2(infile)
-   #test, if everything is fine:
 
    #now, start writing to output-file
    #writePreamble(outfile, Inoocc,Inouno, dim)
@@ -32,8 +46,6 @@ def main(argv=None):
    output.write("\nINIEN \n")
    rw.rwenergy(output,infile)
    output.close()
-   #print occf
-   #print occi
    rw.printCI(outfile, FCIcoeff, FCitrans, sort,Fnoocc, Fnouno, Fnos,occf)
    rw.printCI(outfile, ICIcoeff, ICitrans, sort,Inoocc, Inouno, Inos,occi)
 

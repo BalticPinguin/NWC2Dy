@@ -3,6 +3,17 @@ import re, mmap
 import numpy as np
 
 def getCoefficients( MOvect ):
+   """ This function extracts the coefficients for molecular orbitals out-of log-files of
+       a modified nwchem-version. The modification needed is: full print of MO-coefficients
+
+       **PARAMETERS**
+       MOvect    a vector containing the MO-coefficients as its elements;
+                 each element contains a string for one MO.
+                 To get the correct format, see function printOrbitals.
+       **RETURNS**
+       coeff     a matrix whose colums belong to MO vectors and rows contain coefficiens of
+                 atomic orbitals.
+   """
    for ind in range(len(MOvect)):
       currMOv=re.split('\n|            ', MOvect[ind].strip().split("---------------\n")[-1])
       elements=[]
@@ -21,8 +32,21 @@ def getCoefficients( MOvect ):
    return coeff
 
 def getFile(purpose):
+   """ This function can be used to ask for additonal file names that are initially not given (e.g. due to
+       extra options). 
+       **PARAMETERS**
+       purpose   a string containing a desciption of the file. It should tell the user,
+                 which file has to be specified. (so make it descriptive ore even unique!)
+       **RETURNS**
+       the given name of the file
+
+       **TODO**
+       A good amendment to this function would be:
+        a) to show availible files (ls)
+        b) to make a test, whether the file exists and is readable
+        c) probably even to make auto-verfollstaendigung; if possible in python??
+   """
    infile = raw_input("Please type the file for %s :" %(purpose))
-   ##########check, if this is a valid file--------------------<<<
    return infile
 
 def getOrbitals( MOvect ):
@@ -88,11 +112,24 @@ def getOcc(MOvect):
 
 def OrbitalNames(n):
    """ wrong, if more than 21 shells have to be filled (after 8s, there will be errors)
+       THIS FUNCTION HAS TO BE CHANGED MORE FUNDAMENTALLY TO BE MORE FLEXIBLE
+       FOR DIFFERENT BASIS SETS.
+       MOREOVER, IT SEEM TO CONTAIN CONTRADITORY INFORMATION ON THE MAIN QUANTUM NUMBER!
    """
    names=[]
    n=int(n)
    if n>=1:
       names.append([str(n)+"s",n ,0, 0])
+   if n>=7:
+      names.append([str(n-2)+"g4-",(n-1),4,-4])
+      names.append([str(n-2)+"g3-",(n-1),4,-3])
+      names.append([str(n-2)+"g2-",(n-1),4,-2])
+      names.append([str(n-2)+"g1-",(n-1),4,-1])
+      names.append([str(n-2)+"g0",(n-1),4, 0])
+      names.append([str(n-2)+"g1+",(n-1),4, 1])
+      names.append([str(n-2)+"g2+",(n-1),4, 2])
+      names.append([str(n-2)+"g3+",(n-1),4, 3])
+      names.append([str(n-2)+"g4+",(n-1),4, 4])
    if n>=6:
       names.append([str(n-2)+"f3-",(n-1),3,-3])
       names.append([str(n-2)+"f2-",(n-1),3,-2])
@@ -101,7 +138,7 @@ def OrbitalNames(n):
       names.append([str(n-2)+"f1+",(n-1),3, 1])
       names.append([str(n-2)+"f2+",(n-1),3, 2])
       names.append([str(n-2)+"f3+",(n-1),3, 3])
-   if n>=4:
+   if n>=4: 
       names.append([str(n-1)+"d2-",(n-2),2,-2])
       names.append([str(n-1)+"d1-",(n-2),2,-1])
       names.append([str(n-1)+"d0",(n-2),2, 0])
