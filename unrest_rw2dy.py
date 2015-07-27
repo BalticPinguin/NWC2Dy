@@ -211,28 +211,31 @@ def printOrbitals(infile,outfile):
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
    files.close
-   #temp=re.findall(r"(?<=ROHF Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
-   temp=re.findall(r"(?<=DFT Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)",  inp, re.M)[-1]
-   MOvect=temp.strip().split("Vector")
-   nbf=len(MOvect)-1 #because the first element is not an orbital vector
-   MOs, sort=getOrbitals( MOvect[1] )
+   ##### add respective B-elements!!!
+   atemp=re.findall(
+       r"(?<=DFT Final Alpha Molecular Orbital Analysis\n )[\w.=\+\- \n',^\"\d]+(?=DFT Final Beta)"
+       , inp, re.M)[0]
+   aMOvect=atemp.strip().split("Vector")
+   anbf=len(aMOvect)-1 #because the first element is not an orbital vector
+   aMOs, asort=getOrbitals(aMOvect[1] )
+   #now, fet the sorting and the first row to be printed
    #obtain the coefficients
-   indMatrix=getCoefficients(MOvect[1:])
+   indMatrix=getCoefficients(aMOvect[1:])
 
    #print matrix in required format:
-   for n in range(0,nbf,5):
+   for n in range(0,anbf,5):
          output.write(u"\n\n       Orbital")
          "                %i"
-         for i in range(n,min(n+5,nbf)):
+         for i in range(n,min(n+5,anbf)):
             output.write(u"                %i" %(i+1))
          output.write("\n\n")
-         for j in range(len(MOs)):
-            output.write(u"  %2i    %s"%(j+1, MOs[j]))
-            for i in range(n,min(n+5,nbf)):
-               output.write(u"  %0.10E " %(indMatrix[i][sort[j]])) #convert the repective element
+         for j in range(len(aMOs)):
+            output.write(u"  %2i    %s"%(j+1, aMOs[j]))
+            for i in range(n,min(n+5,anbf)):
+               output.write(u"  %0.10E " %(indMatrix[i][asort[j]])) #convert the repective element
             output.write("\n")
    output.close
-   return sort
+   return asort
 
 def readCI(CIfile):
    #open the file 
@@ -288,37 +291,53 @@ def readCI2(infile):
             noorb=len(CI)
          else:
             noorb=len(CI)-1
-         CIcoeff=np.zeros((nos,noorb))
-         CItrans=np.zeros((noorb,2))
+         CIcoeff=np.zeros((nos,2,noorb))
+         CItrans=np.zeros((noorb,4))
       for j in range(noorb):
          transition=CI[j].split()
-         CIcoeff[i][j]=transition[-1]
-         if i==0:
-            if len(transition)==8:
-               CItrans[j]=[transition[1],transition[5]]
-            elif len(transition)==10:
-               CItrans[j]=[transition[1],transition[6]]
-            else:
-               assert 1==2, "an error occured. Structure of CI-vectors unknown: \n %s\n" %transition
-   #print len(CItrans)
-   noocc=int(np.max(CItrans[:].T[0]))
-   nouno=int(np.max(CItrans[:].T[1]))-noocc
+         if transition[2]=="alpha":
+            CIcoeff[i][0][j]=transition[-1]
+            if i==0:
+               CItrans[j][:2]=[transition[1],transition[6]]
+         elif transition[2]=="beta":
+            CIcoeff[i][1][j]=transition[-1]
+            if i==0:
+               CItrans[j][2:]=[transition[1],transition[6]]
+         else:
+            assert 1==2, "wrong format. Not an unrestricted open shell-system or "
+   #THIS NEEDS TO BE REDEFINED!!!!
+   noocc=int(np.max(CItrans[:][0].T[0]))
+   nouno=int(np.max(CItrans[:][0].T[1]))-noocc
    return CIcoeff, CItrans, noocc, nouno, nos
 
 def readOrbitals(infile):
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
    files.close
-   #temp=re.findall(r"(?<=ROHF Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
-   temp=re.findall(r"(?<=DFT Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)
-   assert temp!=[], "Either no DFT MO analysis is taken into account or the calculation terminated with an error."
-   temp=re.findall(r"(?<=DFT Final Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=center of mass)", inp, re.M)[-1]
-   MOvect=temp.strip().split("Vector")
-   nbf=len(MOvect)-1 #because the first element is not an orbital vector
+   atemp=re.findall(
+       r"(?<=DFT Final Alpha Molecular Orbital Analysis\n )[\w.=\+\- \n',^\"\d]+(?=DFT Final Beta)"
+       , inp, re.M)[0]
+   aMOvect=atemp.strip().split("Vector")
+   anbf=len(aMOvect)-1 #because the first element is not an orbital vector
+   aMOs, asort=getOrbitals(aMOvect[1] )
    #now, fet the sorting and the first row to be printed
-   MOs, sort=getOrbitals( MOvect[1] )
-   occupation=getOcc(MOvect[1:])
-   return MOs, sort, occupation
+   aoccupation=getOcc(aMOvect[1:])
+
+   # repeat for beta-porbitals
+   btemp=re.findall(r"(?<=DFT Final Beta Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=\n\n)", inp, re.M)[-1]
+   #print(btemp)
+   bMOvect=btemp.strip().split("Vector")
+   bnbf=len(bMOvect)-1 
+   bMOs, bsort=getOrbitals( bMOvect[1] )
+   boccupation=getOcc(bMOvect[1:])
+
+   #test, if asort==bsort
+   if any(asort!=bsort):
+      assert 1==2, "the sorting of alpha- and beta-orbitals doesn't coincide."
+   occupation=[aoccupation, boccupation]
+   MOs=[aMOs,bMOs]
+   print(occupation)
+   return MOs, asort, occupation
 
 def rOverlap(infile, sort):
    files=open(infile, "r")

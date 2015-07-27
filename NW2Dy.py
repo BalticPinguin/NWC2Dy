@@ -1,14 +1,18 @@
 #!/usr/bin/python
 import sys
-import rw2dy as rw
+import unrest_rw2dy as rw
 
+
+# changelog: 0.4:
+# 1) use unrest_rw2dy instead rw2dy.
+#
 def main(argv=None):
    assert len(argv)==3, "three input files expected."
-   fnfile=argv[0]
-   infile=argv[1]
+   fnfile=argv[0] # final file
+   infile=argv[1] # initial file
    outfile=argv[2]
-   MO,sort,occi=rw.readOrbitals(infile)
    fMO,fsort,occf=rw.readOrbitals(fnfile)
+   MO,sort,occi=rw.readOrbitals(infile)
    #test, if everything is fine:
    if MO!=fMO:
       error=open("error.out", 'w')
@@ -23,8 +27,9 @@ def main(argv=None):
       error.close()
       assert 1==0, "the The sorting-vectors don't coinciede. See file error.out"
    ov, dim=rw.rOverlap(infile, sort)
-   if sum(occi)!=sum(occf)+1:
-      assert 2==1 "the numbers of initial/final electrons seem to be wrong: initial: %i final: %i" %(sum(occi), sum(off))
+   if sum(occi[0]+occi[1])!=sum(occf[0]+occf[1])+1:
+      assert 2==1, "the numbers of initial/final electrons seem to be wrong:"\
+      " initial: %i final: %i" %(sum(occi[0]+occi[0]), sum(occf[0]+occf[1]))
  
  ######## this is the alternative way: read CI-vectors from extra files
  #  CIfile=getFile("CI-coefficients")
@@ -36,7 +41,7 @@ def main(argv=None):
 
    #now, start writing to output-file
    #writePreamble(outfile, Inoocc,Inouno, dim)
-   rw.writePreamble2(outfile, Inoocc,Inouno, dim, sum(occi),sum(occf))
+   rw.writePreamble2(outfile, Inoocc,Inouno, dim, sum(occi[0]+occi[1]),sum(occf[0]+occf[1]))
    rw.printOrbitals(infile,outfile)
    rw.wOverlap(ov,dim,sort,outfile)
    #printnorm(CIcoeff)
@@ -52,4 +57,4 @@ def main(argv=None):
 if __name__ == "__main__":
    main(sys.argv[1:])
 
-version=0.3
+version=0.4

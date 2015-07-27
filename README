@@ -1,0 +1,9 @@
+======PURPOSE OF NW2DY=====
+
+
+The usage of NW2Dy requires a changed NWChem-version having more detailed output.
+The changes can be done using the following patches:
+
+=======PATCHES=======
+movecs.patch --> print all coefficients for molecular orbitals that are >0
+roks.patch  -->
