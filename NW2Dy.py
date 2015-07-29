@@ -1,10 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import sys
+from numpy import any
 import unrest_rw2dy as rw
 
 
 # changelog: 0.4:
 # 1) use unrest_rw2dy instead rw2dy.
+# 2) chhanged to python3
 #
 def main(argv=None):
    assert len(argv)==3, "three input files expected."
@@ -17,13 +19,13 @@ def main(argv=None):
    if MO!=fMO:
       error=open("error.out", 'w')
       for i in range(len(MO)):
-         error.write("%.8g   %.8g"%(MO[i], fMO[i]))
+         error.write("%.8g   %.8g\n"%(MO[i], fMO[i]))
       error.close()
       assert 1==0, "the MO-vectors don't coinciede. See file error.out"
    if any(sort!=fsort):
       error=open("error.out", 'w')
-      for i in range(len(MO)):
-         error.write("%.8g   %.8g"%(sort[i], fsort[i]))
+      for i in range(len(sort)):
+         error.write("%.8g   %.8g    %8g\n"%(sort[i], fsort[i], sort[i]-fsort[i]))
       error.close()
       assert 1==0, "the The sorting-vectors don't coinciede. See file error.out"
    ov, dim=rw.rOverlap(infile, sort)
@@ -35,13 +37,12 @@ def main(argv=None):
  #  CIfile=getFile("CI-coefficients")
  #  CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
  ########
-
+ 
    FCIcoeff, FCitrans, Fnoocc, Fnouno, Fnos=rw.readCI2(fnfile)
    ICIcoeff, ICitrans, Inoocc, Inouno, Inos=rw.readCI2(infile)
-
    #now, start writing to output-file
-   #writePreamble(outfile, Inoocc,Inouno, dim)
-   rw.writePreamble2(outfile, Inoocc,Inouno, dim, sum(occi[0]+occi[1]),sum(occf[0]+occf[1]))
+   rw.writePreamble(outfile, Inoocc,Inouno, dim, sum(occi[0]+occi[1]),sum(occf[0]+occf[1]))
+   #rw.printOrbitals(fnfile,outfile)
    rw.printOrbitals(infile,outfile)
    rw.wOverlap(ov,dim,sort,outfile)
    #printnorm(CIcoeff)
@@ -51,6 +52,7 @@ def main(argv=None):
    output.write("\nINIEN \n")
    rw.rwenergy(output,infile)
    output.close()
+   #================= this needs to be changed according to new structure
    rw.printCI(outfile, FCIcoeff, FCitrans, sort,Fnoocc, Fnouno, Fnos,occf)
    rw.printCI(outfile, ICIcoeff, ICitrans, sort,Inoocc, Inouno, Inos,occi)
 
