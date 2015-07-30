@@ -1,0 +1,82 @@
+--- nwdft/lr_tddft/tddft_analysis.F	2015-07-11 15:55:40.770319454 +0200
++++ nwdft/lr_tddft/tddft_analysis.F	2015-07-14 11:16:02.096055994 +0200
+@@ -41,7 +41,7 @@ c
+ #include "cosmo.fh"
+ c
+       double precision thresh  ! Threshold for printing
+-      parameter (thresh=5.0d-2)
++      parameter (thresh=0.0d-2)   !!! changed this threshold (Hubert)
+       double precision au2ev   ! Conversion factor from a.u. to eV
+       parameter (au2ev=27.2113961d0)
+       double precision mijtol  ! Transition moment tolerance
+@@ -1340,7 +1340,7 @@ c
+                 call sym_irrepname
+      1            (geom,int_mb(k_irs(1)+k-1),vname)
+                 if (nodezero.and.util_print('excited state',
+-     1            print_default).and.(dabs(r).gt.thresh))
++     1            print_default).and.(dabs(r).ge.thresh))
+      2            write(LuOut,9120) j,oname,k,vname,r
+               else
+                 r=dbl_mb(k_x(1)+l-1)
+@@ -1349,11 +1349,11 @@ c
+                 call sym_irrepname
+      1            (geom,int_mb(k_irs(1)+k-1),vname)
+                 if (nodezero.and.util_print('excited state',
+-     1            print_default).and.(dabs(r).gt.thresh))
++     1            print_default).and.(dabs(r).ge.thresh))
+      2            write(LuOut,9130) j,oname,k,vname,r
+                 r=dbl_mb(k_y(1)+l-1)
+                 if (nodezero.and.util_print('excited state',
+-     1            print_default).and.(dabs(r).gt.thresh))
++     1            print_default).and.(dabs(r).ge.thresh))
+      2            write(LuOut,9140) j,oname,k,vname,r
+               endif
+             enddo
+@@ -1371,7 +1371,7 @@ c
+                   call sym_irrepname
+      1              (geom,int_mb(k_irs(i)+k-1),vname)
+                   if (nodezero.and.util_print('excited state',
+-     1              print_default).and.(dabs(r).gt.thresh))
++     1              print_default).and.(dabs(r).ge.thresh))
+      2              write(LuOut,9150) j,spin(i),oname,
+      3              k,spin(i),vname,r
+                 else
+@@ -1381,12 +1381,12 @@ c
+                   call sym_irrepname
+      1              (geom,int_mb(k_irs(i)+k-1),vname)
+                   if (nodezero.and.util_print('excited state',
+-     1              print_default).and.(dabs(r).gt.thresh))
++     1              print_default).and.(dabs(r).ge.thresh))
+      2              write(LuOut,9160) j,spin(i),oname,
+      3              k,spin(i),vname,r
+                   r=dbl_mb(k_y(i)+l-1)
+                   if (nodezero.and.util_print('excited state',
+-     1              print_default).and.(dabs(r).gt.thresh))
++     1              print_default).and.(dabs(r).ge.thresh))
+      2              write(LuOut,9170) j,spin(i),oname,
+      3              k,spin(i),vname,r
+                 endif
+@@ -1586,16 +1586,16 @@ c
+      7    ,/,5x,'Dipole Oscillator Strength',20x,f12.5)
+  9210 format(5x,'Transition Moments                    Spin forbidden'
+      1    ,/,5x,'Oscillator Strength                   Spin forbidden')
+- 9120 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,f10.5)
+- 9130 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,f8.5,' X')
+- 9140 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,f8.5,' Y')
++ 9120 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,g15.8)
++ 9130 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,g15.8,' X')
++ 9140 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,g15.8,' Y')
+  9150 format(5x,'Occ.',i5,1x,a5,1x,a4,'---  Virt.',
+-     1  i5,1x,a5,1x,a4,f10.5)
++     1  i5,1x,a5,1x,a4,g15.8)
+  9160 format(5x,'Occ.',i5,1x,a5,1x,a4,'---  Virt.',
+-     1  i5,1x,a5,1x,a4,f8.5,' X')
++     1  i5,1x,a5,1x,a4,g15.8,' X')
+  9170 format(5x,'Occ.',i5,1x,a5,1x,a4,'---  Virt.',
+-     1  i5,1x,a5,1x,a4,f8.5,' Y')
+- 9180 format(2x,'<S2> = ',f8.4)
++     1  i5,1x,a5,1x,a4,g15.8,' Y')
++ 9180 format(2x,'<S2> = ',g15.8)
+  9250 format(5x,a
+      $    ,/,5x,'       X ',f12.7,'   Y',f12.7,'   Z',f12.7)
+  9251 format( 5x,a,1x,f20.7)

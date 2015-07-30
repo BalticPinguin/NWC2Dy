@@ -1,11 +1,6 @@
---- src/ddscf/movecs_pr_anal.F	2014-09-10 20:08:10.000000000 +0200
-+++ src/ddscf/movecs_pr_anal.F	2015-06-30 12:06:34.129118998 +0200
-@@ -1,3 +1,4 @@
-+      
-       subroutine movecs_print_anal(basis, ilo, ihi, thresh,
-      $     g_vecs, title, 
-      $     oevals, evals, oirs, irs, oocc, occ)
-@@ -93,14 +94,23 @@ c if there is no title sent, don't print
+--- ddscf/movecs_pr_anal.F	2015-06-30 10:18:11.801353397 +0200
++++ ddscf/movecs_pr_anal.F	2015-06-30 12:06:34.129118998 +0200
+@@ -94,14 +94,23 @@ c if there is no title sent, don't print
           write(LuOut,*)
  c
   110     continue
@@ -25,12 +20,12 @@
 +
              n = 0
 -            cur_thresh = thresh
-+c           cur_thresh = thresh    changed (Hubert)
++c            cur_thresh = thresh    chhanged (Hubert)
 +            cur_thresh = 0.0d0
   111        do j = 0, nbf-1
                 if (abs(dbl_mb(k_vecs+j)).ge.cur_thresh) then
                    int_mb(k_list + n) = j
-@@ -195,14 +205,15 @@ c
+@@ -196,14 +205,15 @@ c
   22         format(1x,2('  Bfn.  Coefficient  Atom+Function  ',5x))
              write(LuOut,23)
   23         format(1x,2(' ----- ------------  ---------------',5x))
@@ -48,167 +43,3 @@
              enddo
              write(LuOut,*)
           enddo
-
---- src/ddscf/print_1eints.F	2014-09-10 20:08:10.000000000 +0200
-+++ src/ddscf/print_1eints.F	2015-06-22 16:44:07.831494995 +0200
-@@ -235,13 +229,14 @@ c
-       call print_1e_init_cartbf(cartbf)
- c
- c
-+      if(iproc.eq.0) then
-       do jshell = 1, nshell_j
-          do ishell = 1, nshell_i
- c
--            if (mod(ijshell, nproc) .eq. iproc) then
-+cprog            if (mod(ijshell, nproc) .eq. iproc) then
-               odoit = .true.
-               if (oskel) odoit = sym_shell_pair(ibas,ishell,jshell,q2)
--              if (odoit) then
-+cnosym              if (odoit) then
-                 if (.not. bas_cn2bfr(ibas, ishell, ilo, ihi)) 
-      $           call errquit('print_1eints: bas_cn2bfr',ibas,BASIS_ERR)
-                 if (.not. bas_cn2bfr(jbas, jshell, jlo, jhi))
-@@ -356,11 +351,12 @@ c
- c                 The end
- c
-                 endif
--              end if
--            endif
-+cnosym              end if
-+c            endif !proc
-             ijshell = ijshell + 1
-          end do
-       end do
-+      endif ! iproc.eq.0
- c     
- c     chop stack at first item allocated
- c     
-@@ -397,9 +393,9 @@ c
- c
-       do j = jlo, jhi
-          do i = ilo, ihi
--            if (abs(buf(i,j)).gt.1d-8) then
-+            if (abs(buf(i,j)).gt.0) then   ! changed it (Hubert) before: .gt.1e-8
-                write(6,1) inttitle,i,j,buf(i,j)
-- 1             format(A,2i5,f20.8)
-+ 1             format(A,2i5,E20.10)   ! changed it (Hubert) before: f10.8
-             endif
-          enddo
-       enddo
-@@ -430,11 +426,11 @@ c
- c
- 
- c
--      call print_1e_init_cartbf(cartbf)
-+      call print_1e_init_cartbf(cartbf)   ! here, cartbf() is set (Hubert). But where is it needed??
- c
-       do j = jlo, jhi
-          do i = ilo, ihi
--            if (abs(buf(i,j)).gt.1d-8) then
-+            if (abs(buf(i,j)).gt.0) then  ! changed this to print all. before: .gt. 1d-8 (Hubert)
- c               write(6,*) 'ishell = ',ishell
- c               write(6,*) 'jshell = ',jshell
- c               write(6,*) 'iatom = ',iatom
-@@ -450,15 +446,15 @@ c               jcart = '        ' ! car
-                write(6,1) title,i,isymbol,shtypes(itype),
-      &                          j,jsymbol,shtypes(jtype),buf(i,j)
-  1             format(A,i5,3x,a2,1x,a1,1x,
--     &                  i5,3x,a2,1x,a1,1x,f20.8)
-+     &                  i5,3x,a2,1x,a1,1x,e20.10)  ! changed; from ,f20,8 (Hubert)
-             endif
-          enddo
-       enddo
- c
-       end
- c
--      subroutine print_1e_init_cartbf(cartbf)
--      implicit none
-+      subroutine print_1e_init_cartbf(cartbf)  ! conversion from numbers to letters. (Hubert)
-+      implicit none                            ! How is this done?
- c
-       character*8 cartbf(-1:7,1:36)
- c
-
---- src/nwdft/lr_tddft/tddft_analysis.F	2014-09-10 20:00:17.000000000 +0200
-+++ src/nwdft/lr_tddft/tddft_analysis.F	2015-07-14 11:16:02.096055994 +0200
-@@ -41,7 +41,7 @@ c
- #include "cosmo.fh"
- c
-       double precision thresh  ! Threshold for printing
--      parameter (thresh=5.0d-2)
-+      parameter (thresh=0.0d-2)   !!! changed this threshold (Hubert)
-       double precision au2ev   ! Conversion factor from a.u. to eV
-       parameter (au2ev=27.2113961d0)
-       double precision mijtol  ! Transition moment tolerance
-@@ -1340,7 +1340,7 @@ c
-                 call sym_irrepname
-      1            (geom,int_mb(k_irs(1)+k-1),vname)
-                 if (nodezero.and.util_print('excited state',
--     1            print_default).and.(dabs(r).gt.thresh))
-+     1            print_default).and.(dabs(r).ge.thresh))
-      2            write(LuOut,9120) j,oname,k,vname,r
-               else
-                 r=dbl_mb(k_x(1)+l-1)
-@@ -1349,11 +1349,11 @@ c
-                 call sym_irrepname
-      1            (geom,int_mb(k_irs(1)+k-1),vname)
-                 if (nodezero.and.util_print('excited state',
--     1            print_default).and.(dabs(r).gt.thresh))
-+     1            print_default).and.(dabs(r).ge.thresh))
-      2            write(LuOut,9130) j,oname,k,vname,r
-                 r=dbl_mb(k_y(1)+l-1)
-                 if (nodezero.and.util_print('excited state',
--     1            print_default).and.(dabs(r).gt.thresh))
-+     1            print_default).and.(dabs(r).ge.thresh))
-      2            write(LuOut,9140) j,oname,k,vname,r
-               endif
-             enddo
-@@ -1371,7 +1371,7 @@ c
-                   call sym_irrepname
-      1              (geom,int_mb(k_irs(i)+k-1),vname)
-                   if (nodezero.and.util_print('excited state',
--     1              print_default).and.(dabs(r).gt.thresh))
-+     1              print_default).and.(dabs(r).ge.thresh))
-      2              write(LuOut,9150) j,spin(i),oname,
-      3              k,spin(i),vname,r
-                 else
-@@ -1381,12 +1381,12 @@ c
-                   call sym_irrepname
-      1              (geom,int_mb(k_irs(i)+k-1),vname)
-                   if (nodezero.and.util_print('excited state',
--     1              print_default).and.(dabs(r).gt.thresh))
-+     1              print_default).and.(dabs(r).ge.thresh))
-      2              write(LuOut,9160) j,spin(i),oname,
-      3              k,spin(i),vname,r
-                   r=dbl_mb(k_y(i)+l-1)
-                   if (nodezero.and.util_print('excited state',
--     1              print_default).and.(dabs(r).gt.thresh))
-+     1              print_default).and.(dabs(r).ge.thresh))
-      2              write(LuOut,9170) j,spin(i),oname,
-      3              k,spin(i),vname,r
-                 endif
-@@ -1586,16 +1586,16 @@ c
-      7    ,/,5x,'Dipole Oscillator Strength',20x,f12.5)
-  9210 format(5x,'Transition Moments                    Spin forbidden'
-      1    ,/,5x,'Oscillator Strength                   Spin forbidden')
-- 9120 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,f10.5)
-- 9130 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,f8.5,' X')
-- 9140 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,f8.5,' Y')
-+ 9120 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,g15.8)
-+ 9130 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,g15.8,' X')
-+ 9140 format(5x,'Occ.',i5,2x,a4,'---  Virt.',i5,2x,a4,g15.8,' Y')
-  9150 format(5x,'Occ.',i5,1x,a5,1x,a4,'---  Virt.',
--     1  i5,1x,a5,1x,a4,f10.5)
-+     1  i5,1x,a5,1x,a4,g15.8)
-  9160 format(5x,'Occ.',i5,1x,a5,1x,a4,'---  Virt.',
--     1  i5,1x,a5,1x,a4,f8.5,' X')
-+     1  i5,1x,a5,1x,a4,g15.8,' X')
-  9170 format(5x,'Occ.',i5,1x,a5,1x,a4,'---  Virt.',
--     1  i5,1x,a5,1x,a4,f8.5,' Y')
-- 9180 format(2x,'<S2> = ',f8.4)
-+     1  i5,1x,a5,1x,a4,g15.8,' Y')
-+ 9180 format(2x,'<S2> = ',g15.8)
-  9250 format(5x,a
-      $    ,/,5x,'       X ',f12.7,'   Y',f12.7,'   Z',f12.7)
-  9251 format( 5x,a,1x,f20.7)
-@@ -1 +1 @@
