@@ -38,12 +38,13 @@ def main(argv=None):
  #  CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
  ########
  
-   FCIcoeff, FCitrans, Fnoocc, Fnouno, Fnos=rw.readCI2(fnfile)
-   ICIcoeff, ICitrans, Inoocc, Inouno, Inos=rw.readCI2(infile)
+   FCIcoeff, FCitrans, Fnoocc, Fnouno, Fnos,Ftrans=rw.readCI2(fnfile)
+   ICIcoeff, ICitrans, Inoocc, Inouno, Inos,Itrans=rw.readCI2(infile)
    #now, start writing to output-file
-   rw.writePreamble(outfile, Inoocc,Inouno, dim, sum(occi[0]+occi[1]),sum(occf[0]+occf[1]))
+   rw.writePreamble(outfile, Inoocc,Inouno, dim, sum(occi[0]+occi[1]),sum(occf[0]+occf[1]), Ftrans, Itrans)
    #rw.printOrbitals(fnfile,outfile)
-   rw.printOrbitals(infile,outfile)
+   rw.printOrbitals(fnfile,outfile,"f")
+   rw.printOrbitals(infile,outfile,"i")
    rw.wOverlap(ov,dim,sort,outfile)
    #printnorm(CIcoeff)
    output=open(outfile, 'a')
@@ -52,9 +53,8 @@ def main(argv=None):
    output.write("\nINIEN \n")
    rw.rwenergy(output,infile)
    output.close()
-   #================= this needs to be changed according to new structure
-   rw.printCI(outfile, FCIcoeff, FCitrans, sort,Fnoocc, Fnouno, Fnos,occf)
-   rw.printCI(outfile, ICIcoeff, ICitrans, sort,Inoocc, Inouno, Inos,occi)
+   rw.printCI(outfile, FCIcoeff, FCitrans, sort,Fnoocc, Fnouno, Fnos,occf,Ftrans)
+   rw.printCI(outfile, ICIcoeff, ICitrans, sort,Inoocc, Inouno, Inos,occi,Itrans)
 
 if __name__ == "__main__":
    main(sys.argv[1:])

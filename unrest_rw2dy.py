@@ -2,6 +2,8 @@
 import re, mmap
 import numpy as np
 
+# changelog 0.3
+# 1)
 # changelog 0.2
 # 1) converted to python3
 # 2) got running code for unrestricted system
@@ -117,14 +119,35 @@ def getOrbitals( MOvect ):
    #resort elemnts by index
    MO=[]
    for i in range(len(index)):
+      # this is a test. I don't know, if it will work...
+      if len(elements[index[i]])>5:
+         #print(elements[index[i]][4:])
+         elements[index[i]][4]=elements[index[i]][4]+elements[index[i]][5]
+         #print(elements[index[i]][4])
       MO.append([elements[index[i]][2], elements[index[i]][3],elements[index[i]][4]])
       #print(MO[i])
    #print("\n\n")
    NumAtom=int(MO[-1][0])
    sort=[]
    sortMO=[]
-   types=["s", "px", "py", "pz"]
-   n=[0, 1, 1, 1]
+   # this is a test. I don't know, if it will work...
+   control=False
+   for foo in elements:
+      if re.search("f", foo[4]) is not None:
+         types=["s", "px", "py", "pz","d-2", "d-1", "d0", "d1", "d2","f-3", "f-2", "f-1", "f0", "f1", "f2","f3"]
+         n=[0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3]
+         control=True
+         break
+   if not control:
+      for foo in elements:
+         if re.search("d", foo[4]) is not None:
+            types=["s", "px", "py", "pz","d-2", "d-1", "d0", "d1", "d2"]
+            n=[0, 1, 1, 1, 2, 2, 2, 2, 2]
+            control=True
+            break
+   if not control:
+      types=["s", "px", "py", "pz"]
+      n=[0, 1, 1, 1]
    while len(sort)<len(MO):
       #yes, here I do use an old name for a new object.
       for atom in range(NumAtom): 
@@ -137,6 +160,7 @@ def getOrbitals( MOvect ):
                if MO[i][2]==types[x]:
                   m+=1
                   sort.append(i)
+                 # print(MO[i], n[x])
                   sortMO.append("%s%s    %i%s"%(MO[i][0], MO[i][1], n[x]+m, MO[i][2]))
                   #print(sort[-1], sortMO[-1], orbital_nr[index[i]])
             if len(sort)==len(elements): #all functions found
@@ -197,7 +221,18 @@ def OrbitalNames(n):
       names.append([str(n)+"pz",n,1,1])
    return names 
 
-def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ):
+def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans):
+   def Trans(transition, state):
+      newstate=""
+      sortstate=Trans(transition[j], statestr)
+      for i in range(state):
+         if str(i+1) in transition:
+           #ckeck, which one it is.
+           occ[0][transition[2]-1]="1" #: --> work with occ[]?
+         else:
+            newstate+=state[i]
+      return state
+
    output=open(outfile, 'a')
    statestr=""
    for i in range(noocc+nofree):
@@ -216,36 +251,43 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ):
       for nomatter in range(noocc+nofree-10):
          output.write(" ")
       output.write("    Coef                      Weight\n")
-      for j in range(noocc*nofree):
+      for j in range(trans): #trans is number of transitions
          #print first (counting) number
          output.write("  %3d         "%(j+1))
          #print the occupation of the state
-         #sortstate=statestr
+         #sortstate=Trans(transition[j], statestr, occ)
          if transition[j][0]!=0: #a transition from occ. alpha-state:
             if statestr[transition[j][0]-1]=="2":
+               #######======= this is very slow.
                sortstate="".join("d" if i==transition[j][0]-1 else c for i,c in enumerate(statestr))
-            elif occ[0][transition[j][0]-1]=="1":
+            elif occ[0][transition[j][0]-1]==1:
                sortstate="".join("0" if i==transition[j][0]-1 else c for i,c in enumerate(statestr))
+            else:
+               print(occ[0][transition[j][0]-1], transition[j][2])
          elif transition[j][2]!=0: #a transition from occ. beta-state:
             if statestr[transition[j][2]-1]=="2":
                sortstate="".join("u" if i==transition[j][2]-1 else c for i,c in enumerate(statestr))
-            elif occ[0][transition[j][2]-1]=="1":
+            elif occ[1][transition[j][2]-1]==1:
                sortstate="".join("0" if i==transition[j][2]-1 else c for i,c in enumerate(statestr))
+            else:
+               print("  ",occ[0][transition[j][0]-1], transition[j][2])
          else:
             print(transition[j], statestr)
-         if transition[j][1]!=0: #a transition from occ. alpha-state:
+         if transition[j][1]!=0: #a transition to virt. alpha-state:
             if statestr[transition[j][1]-1]=="0":
                sortstate="".join("u" if i==transition[j][1]-1 else c for i,c in enumerate(sortstate))
-            elif occ[1][transition[j][1]-1]=="1":
+            elif occ[1][transition[j][1]-1]==1:
                sortstate="".join("2" if i==transition[j][1]-1 else c for i,c in enumerate(sortstate))
-         elif transition[j][3]!=0: #a transition from occ. alpha-state:
+         elif transition[j][3]!=0: #a transition to virt. beta-state:
+            #print(j+1, transition[j], statestr[transition[j][3]-1], occ[1][transition[j][3]-1],occ[0][transition[j][3]-1])
             if statestr[transition[j][3]-1]=="0":
                sortstate="".join("d" if i==transition[j][3]-1 else c for i,c in enumerate(sortstate))
-            elif occ[1][transition[j][3]-1]=="1":
+            elif occ[0][transition[j][3]-1]==1:
                sortstate="".join("2" if i==transition[j][3]-1 else c for i,c in enumerate(sortstate))
 
          output.write("%s"%sortstate)
          #print coefficient and weight
+         sortstate=""
          output.write("     %16.10g         %16.10g\n"%( CIcoeff[i][j], CIcoeff[i][j]*CIcoeff[i][j]))
    output.close()
 
@@ -258,7 +300,7 @@ def printnorm(CIcoeff):
          norm+=CIcoeff[i][j]*CIcoeff[i][j]
       print(norm)
 
-def printOrbitals(infile,outfile):
+def printOrbitals(infile,outfile,state):
    output=open(outfile, 'a')
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
@@ -274,6 +316,12 @@ def printOrbitals(infile,outfile):
    #obtain the coefficients
    indMatrix=getCoefficients(aMOvect[1:])
    #print matrix in required format:
+   if state=="f":
+      output.write(u"\n\n final:")
+   elif state=="i":
+      output.write(u"\n\n initial:")
+   else:
+      output.write(u"\n\n unknown:")
    for n in range(0,anbf,5):
          output.write(u"\n\n alpha-Orbital")
          "                %i"
@@ -367,6 +415,7 @@ def readCI2(infile):
             noorb=len(CI)
          else:
             noorb=len(CI)-1
+         #print(noorb)
          CIcoeff=np.zeros((nos,noorb))
          CItrans=np.zeros((noorb,4),dtype=int)
       for j in range(noorb):
@@ -384,9 +433,10 @@ def readCI2(infile):
             CItrans[j][3]=transition[6]
          else:
             assert 1==2, "final state unknown."
+         #print(CItrans[j])
    noocc=int(max(np.max(CItrans[:].T[0]), np.max(CItrans[:].T[2])))
    nouno=int(max(np.max(CItrans[:].T[1]), np.max(CItrans[:].T[3])))-noocc
-   return CIcoeff, CItrans, noocc, nouno, nos
+   return CIcoeff, CItrans, noocc, nouno, nos, noorb
 
 def readOrbitals(infile):
    files=open(infile, "r")
@@ -394,7 +444,7 @@ def readOrbitals(infile):
    files.close
    atemp=re.findall(\
        b"(?<=DFT Final Alpha Molecular Orbital Analysis\n )[\w.=\+\- \n',^\"\d]+(?=DFT Final Beta)",
-        inp, re.M)[0]
+        inp, re.M)[-1]
    aMOvect=atemp.decode("utf-8").strip().split("Vector")
    anbf=len(aMOvect)-1 #because the first element is not an orbital vector
    aMOs, asort=getOrbitals(aMOvect[1] )
@@ -414,6 +464,7 @@ def readOrbitals(infile):
       assert 1==2, "the sorting of alpha- and beta-orbitals doesn't coincide."
    occupation=[aoccupation, boccupation]
    MOs=[aMOs,bMOs]
+   #print(MOs)
    return MOs, asort, occupation
 
 def rOverlap(infile, sort):
@@ -460,10 +511,10 @@ def rwenergy(output, infile):
    exen=exen[-nos+last:last] 
    for i in range(len(exen)):
       eorb=float(exen[i].strip().split()[-4])
-      assert eorb>0, "The state %s seems unconverged. Negative excitation energies occured." %(infile)
+      #assert eorb>0, "The state %s seems unconverged. Negative excitation energies occured." %(infile)
       output.write("%15.10g\n"%(eorb+energy))
 
-def writePreamble(outfile, noocc,nouno, nbf, occi,occf):
+def writePreamble(outfile, noocc,nouno, nbf, occi,occf, ftrans, itrans):
    output=open(outfile, 'w')
    output.write("MOLCAS\n0\n\n")
    output.write("METHOD\n1\n\n")
@@ -478,8 +529,8 @@ def writePreamble(outfile, noocc,nouno, nbf, occi,occf):
    output.write("NBASF\n%d\n\n"%(nbf))
    output.write("SFPRINT\n3\n\n")
    output.write("SOCPRINT\n0\n\n")
-   output.write("FINALWF\n%d  %d\n\n"%(noocc*nouno,noocc*nouno))
-   output.write("INITIALWF\n%d  %d\n\n"%(noocc*nouno,noocc*nouno))
+   output.write("FINALWF\n%d  %d\n\n"%(ftrans, ftrans))
+   output.write("INITIALWF\n%d  %d\n\n"%(itrans, itrans))
    #output.write("INITIALWF\n1  1\n\n")
    output.close()
 
@@ -500,4 +551,4 @@ def wOverlap(overlap, dim,sort, outfile):
             output.write("\n")
    output.close
 
-version=0.2
+version=0.3
