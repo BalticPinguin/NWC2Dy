@@ -1,5 +1,7 @@
---- nwdft/lr_tddft/tddft_analysis.F	2015-07-11 15:55:40.770319454 +0200
-+++ nwdft/lr_tddft/tddft_analysis.F	2015-07-14 11:16:02.096055994 +0200
+Index: src/nwdft/lr_tddft/tddft_analysis.F
+  ===================================================================
+--- src/nwdft/lr_tddft/tddft_analysis.F        (revision 24242)
++++ src/nwdft/lr_tddft/tddft_analysis.F        (working copy)
 @@ -41,7 +41,7 @@ c
  #include "cosmo.fh"
  c

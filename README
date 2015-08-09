@@ -1,9 +1,18 @@
 ======PURPOSE OF NW2DY=====
-
+NW2DY uses the output of a modified nwchem-installation to create the input for an other programme.
 
 The usage of NW2Dy requires a changed NWChem-version having more detailed output.
 The changes can be done using the following patches:
 
 =======PATCHES=======
 movecs.patch --> print all coefficients for molecular orbitals that are >0
-roks.patch  -->
+tddft.patch  --> print all CI coefficients with required accuracy.
+Print1e.patch -> to print overlap matrix more detailed. Patch from: http://www.nwchem-sw.org/images/Print1e.patch.gz
+   alternative way of applying it:
+      wget http://www.nwchem-sw.org/images/Print1e.patch.gz
+      gzip -d Print1e.patch
+      patch -p0 < Print1e.patch
+      cd ddscf
+      make
+      cd ..
+      make link

@@ -1,5 +1,7 @@
---- ddscf/movecs_pr_anal.F	2015-06-30 10:18:11.801353397 +0200
-+++ ddscf/movecs_pr_anal.F	2015-06-30 12:06:34.129118998 +0200
+Index: src/ddscf/movecs_pr_anal.F
+  ===================================================================
+--- src/ddscf/movecs_pr_anal.F        (revision 24242)
++++ src/ddscf/movecs_pr_anal.F        (working copy)
 @@ -94,14 +94,23 @@ c if there is no title sent, don't print
           write(LuOut,*)
  c

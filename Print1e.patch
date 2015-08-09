@@ -1,0 +1,36 @@
+Index: ddscf/print_1eints.F
+===================================================================
+--- ddscf/print_1eints.F	(revision 26726)
++++ ddscf/print_1eints.F	(working copy)
+@@ -235,13 +235,14 @@
+       call print_1e_init_cartbf(cartbf)
+ c
+ c
++      if(iproc.eq.0) then
+       do jshell = 1, nshell_j
+          do ishell = 1, nshell_i
+ c
+-            if (mod(ijshell, nproc) .eq. iproc) then
++cprog            if (mod(ijshell, nproc) .eq. iproc) then !what does this line-start mean?
+               odoit = .true.
+               if (oskel) odoit = sym_shell_pair(ibas,ishell,jshell,q2)
+-              if (odoit) then
++cnosym              if (odoit) then
+                 if (.not. bas_cn2bfr(ibas, ishell, ilo, ihi)) 
+      $           call errquit('print_1eints: bas_cn2bfr',ibas,BASIS_ERR)
+                 if (.not. bas_cn2bfr(jbas, jshell, jlo, jhi))
+@@ -356,11 +357,12 @@
+ c                 The end
+ c
+                 endif
+-              end if
+-            endif
++cnosym              end if
++c            endif !proc
+             ijshell = ijshell + 1
+          end do
+       end do
++      endif ! iproc.eq.0
+ c     
+ c     chop stack at first item allocated
+ c     
