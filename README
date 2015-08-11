@@ -7,12 +7,4 @@ The changes can be done using the following patches:
 =======PATCHES=======
 movecs.patch --> print all coefficients for molecular orbitals that are >0
 tddft.patch  --> print all CI coefficients with required accuracy.
-Print1e.patch -> to print overlap matrix more detailed. Patch from: http://www.nwchem-sw.org/images/Print1e.patch.gz
-   alternative way of applying it:
-      wget http://www.nwchem-sw.org/images/Print1e.patch.gz
-      gzip -d Print1e.patch
-      patch -p0 < Print1e.patch
-      cd ddscf
-      make
-      cd ..
-      make link
+Print1e.patch -> to print overlap matrix more detailed.
