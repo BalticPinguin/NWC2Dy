@@ -1,0 +1,43 @@
+echo
+
+title "S_3 geometry optimization in 3-21g (cc-pvdz) basis set, probably better output"
+
+start testTDDFT_anf
+
+# S3 ...
+
+geometry units au
+
+   symmetry c1
+   s   1.88043804     0.00000000     0.00143614
+   s  -0.93796933     0.00000000    -2.98595443
+   s  -0.94246871     0.00000000     2.98451829
+
+end
+
+basis "ao basis" spherical
+   s  library 6-31g
+end
+
+DFT
+ cgmin
+ odft
+ mult 1
+END
+
+TDDFT
+   CIS
+   notriplet
+   NROOTS 10
+   CIVECS
+   GRAD
+      ROOT 1
+   END
+END
+task tddft optimize
+
+scf
+   print vectors
+   print "overlap"
+end
+task scf
