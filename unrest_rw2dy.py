@@ -299,48 +299,47 @@ def printCI2(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans
    output.close()
 
 def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans):
-
+   
    def Trans(transition, state, occ):
       """
       """
       newstate=""
       for i in range(len(state)):
          if i+1 in transition:
-            #kind=transition.index(i+1) #not found: raise ValueError
             kind=np.where(transition==i+1)[0] #not found: raise ValueError
-            #print(i+1, transition, kind)
-            if kind%2==0: # removing electron at this position
-               if kind==0: #it is alpha-electron:
-                  assert occ[0][transition[0]-1]==1,\
-                        "remove alpha-electron from alpha-free shell."
-                  if occ[1][transition[0]-1]==1:
-                     newstate+="d" # beta-electron remains
-                  else:
-                     newstate+="0" # no electron remains
-               else: #it is a beta-electron (kind==2)
-                  assert occ[1][transition[2]-1]==1,\
-                        "remove beta-electron from beta-free shell."
-                  # does alpha-electron exist at this place:
-                  if occ[0][transition[2]-1]==1: 
-                     newstate+="u" # alpha-electron remains
-                  else:
-                     newstate+="0" # no electron remains
+            if kind==0:
+               assert occ[0][transition[0]-1]==1,\
+                     "remove alpha-electron from alpha-free shell."
+               if occ[1][transition[0]-1]==1:
+                  newstate+="d" # beta-electron remains
+               else:
+                  newstate+="0" # no electron remains
+
+            elif kind==2: #it is a beta-electron
+               assert occ[1][transition[2]-1]==1,\
+                     "remove beta-electron from beta-free shell."
+               # does alpha-electron exist at this place:
+               if occ[0][transition[2]-1]==1: 
+                  newstate+="u" # alpha-electron remains
+               else:
+                  newstate+="0" # no electron remains
    
-            else:#  adding electron at this position
-               if kind==1: #it is alpha-electron:
-                  assert occ[0][transition[1]-1]==0,\
-                        "Trying to place alpha-electron to full place"
-                  if occ[1][transition[1]-1]==1:
-                     newstate+="2" # full place
-                  else: 
-                     newstate+="u" # place for beta-electron remained
-               else: #(kind==3) -> it is beta-electron
-                  assert occ[1][transition[3]-1]==0,\
-                           "Trying to place beta-electron to full place."
-                  if occ[0][transition[3]-1]==1:
-                     newstate+="2" # full place
-                  else: 
-                     newstate+="d" # place for alpha-electron remained
+            elif kind==1:#  adding electron at this position
+               assert occ[0][transition[1]-1]==0,\
+                     "Trying to place alpha-electron to full place"
+               if occ[1][transition[1]-1]==1:
+                  newstate+="2" # full place
+               else: 
+                  newstate+="u" # place for beta-electron remained
+            elif kind==3: # it is beta-electron
+               assert occ[1][transition[3]-1]==0,\
+                        "Trying to place beta-electron to full place."
+               if occ[0][transition[3]-1]==1:
+                  newstate+="2" # full place
+               else: 
+                  newstate+="d" # place for alpha-electron remained
+            else:
+               assert 1==2, "reached unreachable point."
          else:
             newstate+=state[i]
       return newstate
@@ -627,7 +626,7 @@ def writePreamble(outfile, noocc,nouno, nbf, occi,occf, ftrans, itrans, fstates,
    output.write("FNACTEL\n%d\n\n"%(occf))
    output.write("INACTEL\n%d\n\n"%(occi))
    output.write("NBASF\n%d\n\n"%(nbf))
-   output.write("OVERLAPPRINT\n%0\n\n")
+   output.write("OVERLAPPRINT\n0\n\n")
    output.write("SFPRINT\n1\n\n")
    output.write("SFOCCPRINT\n0\n\n")
    output.write("SOCPRINT\n0\n\n")
