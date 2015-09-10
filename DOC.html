@@ -1,0 +1,46 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>Documentation for smallscript</title>
+  <style>
+  table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+   }
+   th, td {
+      padding: 15px;
+   }
+   </style>
+</head>
+<body>
+
+<h1><center>Welcome to the documentation page of NW2Dy</center></h1>
+
+<h2 id="intro">Introduction</h2>
+   The programme is called with three arguments:
+   <ul class="navbar">
+      <li>final_file.nwo
+      <li>initial_file.nwo
+      <li>outfile
+   </ul>
+   where final_file.nwo and initial_file.nwo are log-files of a modified <a href="nwchem-so.org">nwchem</a>-programme.
+   The outfile is used for further analysis and the PES-calculation.
+
+<h2 id="nwchem">Requirements to nwchem-Calculations</h2>
+   besides having the respective patches applied, the programme expects certain calculations of Nwchem to be done:
+   <ul class="navbar">
+      <li> unrestricted open-shell (td)dft calculation:</p>
+        <p> DFT   </p>
+        <p>  odft </p>
+        <p> END   </p>
+      <li>
+   </ul>
+
+<h2 id="code">Programme-flow</h2>
+   <p>First, the programme reads the molecular orbital (MO) vectors (in LCAO). </p>
+   <p>After this, the overlap-matrix of MOs is read </p>
+   <p> </p>
+
+</body>
+</html>

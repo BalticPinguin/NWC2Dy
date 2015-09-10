@@ -133,6 +133,12 @@ def getOrbitals( MOvect ):
    # this is a test. I don't know, if it will work...
    control=False
    for foo in elements:
+      if re.search("g", foo[4]) is not None:
+         types=["s", "px", "py", "pz","d-2", "d-1", "d0", "d1", "d2","f-3", "f-2", "f-1", "f0", "f1", "f2","f3", "g-4", "g-3", "g-2", "g-1", "g0", "g1", "g2","g3", "g4"]
+         n=[0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+         control=True
+         break
+   for foo in elements:
       if re.search("f", foo[4]) is not None:
          types=["s", "px", "py", "pz","d-2", "d-1", "d0", "d1", "d2","f-3", "f-2", "f-1", "f0", "f1", "f2","f3"]
          n=[0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3]
@@ -160,7 +166,7 @@ def getOrbitals( MOvect ):
                if MO[i][2]==types[x]:
                   m+=1
                   sort.append(i)
-                 # print(MO[i], n[x])
+                 #print(MO[i], n[x])
                   sortMO.append("%s%s    %i%s"%(MO[i][0], MO[i][1], n[x]+m, MO[i][2]))
                   #print(sort[-1], sortMO[-1], orbital_nr[index[i]])
             if len(sort)==len(elements): #all functions found
@@ -221,7 +227,7 @@ def OrbitalNames(n):
       names.append([str(n)+"pz",n,1,1])
    return names 
 
-def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans):
+def printCI2(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans):
    def Trans(transition, state):
       newstate=""
       sortstate=Trans(transition[j], statestr)
@@ -246,7 +252,7 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
          statestr+="0"
 
    for i in range(states):
-      output.write("\n\nSTATE=%d \n" %(i+1))
+      output.write("STATE=%d \n" %(i+1))
       output.write("Det             Occupation  ")
       for nomatter in range(noocc+nofree-10):
          output.write(" ")
@@ -289,6 +295,84 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
          #print coefficient and weight
          sortstate=""
          output.write("     %16.10g         %16.10g\n"%( CIcoeff[i][j], CIcoeff[i][j]*CIcoeff[i][j]))
+      output.write("\n\n")
+   output.close()
+
+def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans):
+
+   def Trans(transition, state, occ):
+      """
+      """
+      newstate=""
+      for i in range(len(state)):
+         if i+1 in transition:
+            #kind=transition.index(i+1) #not found: raise ValueError
+            kind=np.where(transition==i+1)[0] #not found: raise ValueError
+            #print(i+1, transition, kind)
+            if kind%2==0: # removing electron at this position
+               if kind==0: #it is alpha-electron:
+                  assert occ[0][transition[0]-1]==1,\
+                        "remove alpha-electron from alpha-free shell."
+                  if occ[1][transition[0]-1]==1:
+                     newstate+="d" # beta-electron remains
+                  else:
+                     newstate+="0" # no electron remains
+               else: #it is a beta-electron (kind==2)
+                  assert occ[1][transition[2]-1]==1,\
+                        "remove beta-electron from beta-free shell."
+                  # does alpha-electron exist at this place:
+                  if occ[0][transition[2]-1]==1: 
+                     newstate+="u" # alpha-electron remains
+                  else:
+                     newstate+="0" # no electron remains
+   
+            else:#  adding electron at this position
+               if kind==1: #it is alpha-electron:
+                  assert occ[0][transition[1]-1]==0,\
+                        "Trying to place alpha-electron to full place"
+                  if occ[1][transition[1]-1]==1:
+                     newstate+="2" # full place
+                  else: 
+                     newstate+="u" # place for beta-electron remained
+               else: #(kind==3) -> it is beta-electron
+                  assert occ[1][transition[3]-1]==0,\
+                           "Trying to place beta-electron to full place."
+                  if occ[0][transition[3]-1]==1:
+                     newstate+="2" # full place
+                  else: 
+                     newstate+="d" # place for alpha-electron remained
+         else:
+            newstate+=state[i]
+      return newstate
+
+   output=open(outfile, 'a')
+   statestr=""
+   for i in range(noocc+nofree):
+      if occ[0][i]==1 and occ[1][i]==1:
+         statestr+="2"
+      elif occ[0][i]==1:
+         statestr+="u"
+      elif occ[1][i]==1:
+         statestr+="d"
+      else:
+         statestr+="0"
+
+   for i in range(states):
+      output.write("STATE=%d \n" %(i+1))
+      output.write("Det             Occupation  ")
+      for nomatter in range(noocc+nofree-10):
+         output.write(" ")
+      output.write("    Coef                      Weight\n")
+      for j in range(trans): #trans is number of transitions
+         #print first (counting) number
+         output.write("  %3d         "%(j+1))
+         #print the occupation of the state
+         sortstate=Trans(transition[j], statestr, occ)
+         
+         output.write("%s"%sortstate)
+         #print coefficient and weight
+         output.write("     %16.10g         %16.10g\n"%( CIcoeff[i][j], CIcoeff[i][j]*CIcoeff[i][j]))
+      output.write("\n\n")
    output.close()
 
 def printnorm(CIcoeff):
@@ -300,7 +384,7 @@ def printnorm(CIcoeff):
          norm+=CIcoeff[i][j]*CIcoeff[i][j]
       print(norm)
 
-def printOrbitals(infile,outfile,state):
+def printOrbitals(infile,outfile,mult,state):
    output=open(outfile, 'a')
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
@@ -317,9 +401,13 @@ def printOrbitals(infile,outfile,state):
    indMatrix=getCoefficients(aMOvect[1:])
    #print matrix in required format:
    if state=="f":
-      output.write(u"\n\n final:")
-   elif state=="i":
-      output.write(u"\n\n initial:")
+      output.write(u"\n\n FINMOCOEFF") 
+      output.write(u"\n MULT=%d"%mult) 
+      output.write(u"\n ALPHA\n") 
+   elif state=="i": 
+      output.write(u"\n\n INIMOCOEFF")
+      output.write(u"\n MULT=%d"%mult) 
+      output.write(u"\n ALPHA\n") 
    else:
       output.write(u"\n\n unknown:")
    for n in range(0,anbf,5):
@@ -347,6 +435,12 @@ def printOrbitals(infile,outfile,state):
       assert 1==2, "An error in the orbital-ordering occured. Alpha- and Beta-orbitals are sorted differently."
    assert bnbf==anbf, "Number of Basis functions differs between alpha and beta. This should never be the case."
    indMatrix=getCoefficients(bMOvect[1:])
+   if state=="f":
+      output.write(u"\n BETA\n")
+   elif state=="i": 
+      output.write(u"\n BETA\n")
+   else:
+      output.write(u"\n\n unknown:")
    for n in range(0,bnbf,5):
          output.write(u"\n\n  beta-Orbital")
          "                %i"
@@ -359,7 +453,6 @@ def printOrbitals(infile,outfile,state):
                output.write(u"  %0.10E " %(indMatrix[i][bsort[j]])) #convert the repective element
             output.write("\n")
    output.close
-   return asort #same as bsort
 
 def readCI(CIfile):
    #open the file 
@@ -403,7 +496,7 @@ def readCI2(infile):
       roots[i]=int(roots[i])
    nos=np.max(roots)
    #cicoeff=re.findall(r"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n]+", inp)
-   cicoeff=re.findall(b"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n alpha beta]+", inp)
+   cicoeff=re.findall(b"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n alpha beta XY]+", inp)
    if len(cicoeff)>nos:
       cicoeff=cicoeff[-nos:] #this gives only last ci-vector
    elif len(cicoeff)<nos:
@@ -420,7 +513,7 @@ def readCI2(infile):
          CItrans=np.zeros((noorb,4),dtype=int)
       for j in range(noorb):
          transition=CI[j].split()
-         CIcoeff[i][j]=transition[-1]
+         CIcoeff[i][j]=transition[9]
          if transition[2]=="alpha":
             CItrans[j][0]=transition[1]
          elif transition[2]=="beta":
@@ -439,32 +532,36 @@ def readCI2(infile):
    return CIcoeff, CItrans, noocc, nouno, nos, noorb
 
 def readOrbitals(infile):
+   """ This function obtains a nwchem log-file (infile) and extracts the MO vectors from it (works only, if in nwchem
+       a odft-calculation was done). For this function, the patch 'movecs' is important for working properly.
+   """
+   #load file and make it an mmap-object
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
    files.close
+   #search for the alpha-part of MOvects
    atemp=re.findall(\
        b"(?<=DFT Final Alpha Molecular Orbital Analysis\n )[\w.=\+\- \n',^\"\d]+(?=DFT Final Beta)",
         inp, re.M)[-1]
    aMOvect=atemp.decode("utf-8").strip().split("Vector")
    anbf=len(aMOvect)-1 #because the first element is not an orbital vector
    aMOs, asort=getOrbitals(aMOvect[1] )
-   #now, fet the sorting and the first row to be printed
+   #now, get the sorting and the first row to be printed
    aoccupation=getOcc(aMOvect[1:])
 
    # repeat for beta-porbitals
    btemp=re.findall(b"(?<=DFT Final Beta Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=\n\n)", inp, re.M)[-1]
-   #print(btemp)
    bMOvect=btemp.decode("utf-8").strip().split("Vector")
    bnbf=len(bMOvect)-1 
    bMOs, bsort=getOrbitals( bMOvect[1] )
    boccupation=getOcc(bMOvect[1:])
 
-   #test, if asort==bsort
+   #test, if asort==bsort. Should be always true, if no error in the programme or inconsistencies occured.
    if np.any(asort!=bsort):
       assert 1==2, "the sorting of alpha- and beta-orbitals doesn't coincide."
+   # put other quantities in common vectors for returning
    occupation=[aoccupation, boccupation]
    MOs=[aMOs,bMOs]
-   #print(MOs)
    return MOs, asort, occupation
 
 def rOverlap(infile, sort):
@@ -514,10 +611,13 @@ def rwenergy(output, infile):
       #assert eorb>0, "The state %s seems unconverged. Negative excitation energies occured." %(infile)
       output.write("%15.10g\n"%(eorb+energy))
 
-def writePreamble(outfile, noocc,nouno, nbf, occi,occf, ftrans, itrans):
+def writePreamble(outfile, noocc,nouno, nbf, occi,occf, ftrans, itrans, fstates, istates):
    output=open(outfile, 'w')
    output.write("MOLCAS\n0\n\n")
+   output.write("ALPHABETA\n1\n\n")
+   output.write("RIXSOCC\n0\n\n")
    output.write("METHOD\n1\n\n")
+   output.write("DETMETHOD\nLU\n\n")
    output.write("FNSPIN\n1\n\n")
    output.write("INSPIN\n1\n\n")
    output.write("FMULT\n2\n\n")
@@ -527,10 +627,13 @@ def writePreamble(outfile, noocc,nouno, nbf, occi,occf, ftrans, itrans):
    output.write("FNACTEL\n%d\n\n"%(occf))
    output.write("INACTEL\n%d\n\n"%(occi))
    output.write("NBASF\n%d\n\n"%(nbf))
-   output.write("SFPRINT\n3\n\n")
+   output.write("OVERLAPPRINT\n%0\n\n")
+   output.write("SFPRINT\n1\n\n")
+   output.write("SFOCCPRINT\n0\n\n")
    output.write("SOCPRINT\n0\n\n")
-   output.write("FINALWF\n%d  %d\n\n"%(ftrans, ftrans))
-   output.write("INITIALWF\n%d  %d\n\n"%(itrans, itrans))
+   output.write("SOCOCCPRINT\n0\n\n")
+   output.write("FINALWF\n%d  %d\n\n"%(fstates, ftrans))
+   output.write("INITIALWF\n%d  %d\n\n"%(istates, itrans))
    #output.write("INITIALWF\n1  1\n\n")
    output.close()
 
@@ -539,16 +642,17 @@ def wOverlap(overlap, dim,sort, outfile):
    output.write("\nATOMOVERLAP\n")
    #print matrix in required format:
    for n in range(0,dim,5):
-         output.write(u"\n")
+      output.write(u"\n")
+      for i in range(n,min(n+5,dim)):
+         output.write(u"                %2i" %(i+1))
+      output.write("\n")
+      for j in range(dim):
+         output.write(u"  %2i  "%(j+1))
          for i in range(n,min(n+5,dim)):
-            output.write(u"                %2i" %(i+1))
+            #output.write(u"  %0.10E " %(overlap[i][j])) #convert the repective element
+            output.write(u"  %0.10E " %(overlap[sort[i]][sort[j]])) #convert the repective element
          output.write("\n")
-         for j in range(dim):
-            output.write(u"  %2i  "%(j+1))
-            for i in range(n,min(n+5,dim)):
-               #output.write(u"  %0.10E " %(overlap[i][j])) #convert the repective element
-               output.write(u"  %0.10E " %(overlap[sort[i]][sort[j]])) #convert the repective element
-            output.write("\n")
+      output.write("\n\n")
    output.close
 
 version=0.3

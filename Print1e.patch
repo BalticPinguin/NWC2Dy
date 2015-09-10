@@ -1,7 +1,7 @@
 Index: src/ddscf/print_1eints.F
   ===================================================================
 --- src/ddscf/print_1eints.F	(revision 24242)
-+++ src/ddscf/dprint_1eints.F	(working copy)
++++ src/ddscf/print_1eints.F	(working copy)
 @@ -11,12 +11,6 @@
  #include "cscfps.fh"
  #include "sym.fh"

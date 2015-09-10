@@ -8,3 +8,6 @@ The changes can be done using the following patches:
 movecs.patch --> print all coefficients for molecular orbitals that are >0
 tddft.patch  --> print all CI coefficients with required accuracy.
 Print1e.patch -> to print overlap matrix more detailed.
+
+==== RESTRICTIONS =====
+works only for systems with singlet initial states.
