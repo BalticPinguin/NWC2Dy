@@ -8,6 +8,7 @@ import unrest_rw2dy as rw
 # changelog: 0.4:
 # 1) use unrest_rw2dy instead rw2dy.
 # 2) changed to python3
+# 3) introduced cutoff-energies -> simple implementation
 #
 def main(argv=None):
    # evaluate input-arguments
@@ -20,11 +21,18 @@ def main(argv=None):
    fMO,fsort,occf,enf=rw.readOrbitals(fnfile)
    MO,sort, occi, eni=rw.readOrbitals(infile)
  
-   lowen=0.8
-   highen=0.5
+   lowen=5.50
+   highen=0.50
    HOMO=np.max(np.where(occf[0]==1)) #HOMO==FNOOCC !?
-   low=np.max(np.where(enf[0][HOMO]-enf[0]>lowen))
-   high=np.min(np.where(enf[0]-enf[0][HOMO]>highen))
+   try:
+      low=np.max(np.where(enf[0][HOMO]-enf[0]>lowen))-1
+   except ValueError: # lowen larger thean all orbital energies:
+      low=0
+   try:
+      high=np.min(np.where(enf[0]-enf[0][HOMO]>highen))
+   except ValueError: # lowen larger thean all orbital energies:
+      high=len(occf[0])
+
 #   print(lowboarder)
 #   print(highboarder)
 #
@@ -36,9 +44,25 @@ def main(argv=None):
 #      print(occi[0][i], eni[0][i], " ", occi[1][i], eni[1][i])
    
    #frozen=low+len(occf[0])-high
-   frozen=len(occf[0])-high
-
-   #test, if everything is consistent so far
+   frozen=len(occf[0])-high+low
+   if low==0:
+      if high>0:
+         occf[0]=occf[0][:high] #truncate occupation vectors accoringly.
+         occf[1]=occf[1][:high]
+         occi[0]=occi[0][:high]
+         occi[1]=occi[1][:high]
+   #else:  keep it as it is!
+   else:
+      if high>0:
+         occf[0]=occf[0][low:high] #truncate occupation vectors accoringly.
+         occf[1]=occf[1][low:high]
+         occi[0]=occi[0][low:high]
+         occi[1]=occi[1][low:high]
+      else:
+         occf[0]=occf[0][low:]
+         occf[1]=occf[1][low:]
+         occi[0]=occi[0][low:]
+         occi[1]=occi[1][low:]   #test, if everything is consistent so far
    if MO!=fMO:
       error=open("error.out", 'w')
       for i in range(len(MO)):
@@ -64,9 +88,15 @@ def main(argv=None):
    #read CI-vectors
    FCIcoeff, FCitrans, Fnoocc, Fnouno, Fnos,Ftrans=rw.readCI2(fnfile, low, high)
    ICIcoeff, ICitrans, Inoocc, Inouno, Inos,Itrans=rw.readCI2(infile, low, high)
+   #print(frozen, high, low, Fnoocc, Fnouno)
+
+   #renormalize vectors (due to cutoff)
+   FCIcoeff=rw.normalise(FCIcoeff)
+   ICIcoeff=rw.normalise(ICIcoeff)
 
    #now, start writing to output-file
-   rw.writePreamble(outfile, Inoocc,Inouno, dim, frozen, sum(occi[0]+occi[1]), sum(occf[0]+occf[1]), Ftrans, Itrans, Fnos, Inos)
+   rw.writePreamble(outfile, Inoocc,Inouno, dim, frozen, sum(occi[0]+occi[1]), 
+                            sum(occf[0]+occf[1]), Ftrans, Itrans, Fnos, Inos)
    rw.printOrbitals(fnfile,outfile,2,"f")
    rw.printOrbitals(infile,outfile,1,"i")
    rw.wOverlap(ov,dim,sort,outfile)
@@ -78,7 +108,7 @@ def main(argv=None):
    rw.rwenergy(output,infile)
    output.write("\n\nFINCI\nMULT=2\n")
    output.close()
-   rw.printCI(outfile, FCIcoeff, FCitrans, sort,Fnoocc, Fnouno, Fnos,occf,Ftrans)
+   rw.printCI(outfile, FCIcoeff, FCitrans, sort,Fnoocc, Fnouno, Fnos, occf, Ftrans)
    output=open(outfile, 'a')
    output.write("INICI\nMULT=1\n")
    output.close()

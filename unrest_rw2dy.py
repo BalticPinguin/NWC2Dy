@@ -3,7 +3,7 @@ import re, mmap
 import numpy as np
 
 # changelog 0.3
-# 1)
+# 1) implemented cutoff-energies
 # changelog 0.2
 # 1) converted to python3
 # 2) got running code for unrestricted system
@@ -314,6 +314,7 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
       """
       """
       newstate=""
+      #print(state, transition)
       for i in range(len(state)):
          if i+1 in transition:
             kind=np.where(transition==i+1)[0] #not found: raise ValueError
@@ -365,13 +366,44 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
          statestr+="d"
       else:
          statestr+="0"
+  
+   #ground state
+   output.write("STATE=%d \n" %(1))
+   output.write("Det             Occupation  ")
+   for nomatter in range(noocc+nofree-10):
+      output.write(" ")
+   output.write("    Coef                      Weight\n")
+   # ground state-configuration:
+   output.write("  %3d         "%(1))
+   #print the occupation of the state
+   output.write("%s"%statestr)
+   #print coefficient and weight
+   output.write("     %16.10g         %16.10g\n"%( 1.00, 1.00))
+   for j in range(trans): #trans is number of transitions
+      #print first (counting) number
+      if CIcoeff[1][j]==0: # to give it the right size
+         break # from now. only empty states follow.
+      output.write("  %3d         "%(j+2))
+      #print the occupation of the state
+      sortstate=Trans(transition[j], statestr, occ)
+      output.write("%s"%sortstate)
+      #print coefficient and weight
+      output.write("     %16.10g         %16.10g\n"%( 0.00, 0.0))
+   output.write("\n\n")
 
+   #initial states:
    for i in range(states):
-      output.write("STATE=%d \n" %(i+1))
+      output.write("STATE=%d \n" %(i+2))
       output.write("Det             Occupation  ")
       for nomatter in range(noocc+nofree-10):
          output.write(" ")
+      #ground-state configuration.
       output.write("    Coef                      Weight\n")
+      output.write("  %3d         "%(1))
+      #print the occupation of the state
+      output.write("%s"%statestr)
+      #print coefficient and weight
+      output.write("     %16.10g         %16.10g\n"%( 0.00, 0.00))
       for j in range(trans): #trans is number of transitions
          #print first (counting) number
          if CIcoeff[i][j]==0:
@@ -528,23 +560,26 @@ def readCI2(infile, low, high):
       for j in range(noorb):
          transition=CI[j].split()
          #print(high, transition[6], transition[1], low) 
-         if int(transition[1])<low: #truncate expansion due to energies
+         transition[1]=int(transition[1])
+         transition[6]=int(transition[6])
+         if transition[1]<low: #truncate expansion due to energies
             continue
-         if int(transition[6])>high:
+         if transition[6]>high:
             continue
          CIcoeff[i][index]=transition[9]
          if transition[2]=="alpha":
-            CItrans[index][0]=transition[1]
+            CItrans[index][0]=transition[1]-low
          elif transition[2]=="beta":
-            CItrans[index][2]=transition[1]
+            CItrans[index][2]=transition[1]-low
          else:
             assert 1==2, "initial state unknown."
          if transition[7]=="alpha":
-            CItrans[index][1]=transition[6]
+            CItrans[index][1]=transition[6]-low
          elif transition[7]=="beta":
-            CItrans[index][3]=transition[6]
+            CItrans[index][3]=transition[6]-low
          else:
             assert 1==2, "final state unknown."
+         #print(CItrans[index])
          index+=1
    noocc=int(max(np.max(CItrans[:].T[0]), np.max(CItrans[:].T[2])))
    nouno=int(max(np.max(CItrans[:].T[1]), np.max(CItrans[:].T[3])))-noocc
@@ -586,6 +621,13 @@ def readOrbitals(infile):
    MOs=[aMOs,bMOs]
    return MOs, asort, occupation, energies
 
+def normalise(coeff):
+   for i in range(len(coeff)): #renormalise
+      norm=sum(coeff[i]*coeff[i])
+      coeff[i]=coeff[i]/np.sqrt(norm)
+      print(np.sqrt(norm)) #to keep track on the approximation.
+   return coeff # not neccesary, I think.
+
 def rOverlap(infile, sort):
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
@@ -614,7 +656,7 @@ def rwenergy(output, infile):
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
    files.close()
-   energy=float(re.findall(b"(?<=Total SCF energy =)[\d \-\.]+", inp)[-1])
+   energy=float(re.findall(b"(?<=Total DFT energy =)[\d \-\.]+", inp)[-1])
    output.write("%15.10g\n"%energy)
    exen=re.findall(b"(?<=Root )[\w \d\.\-]+ ",inp)
    roots=[]
@@ -624,10 +666,9 @@ def rwenergy(output, infile):
          roots.append(float(exen[i].strip().split()[0]))
    nos=int(np.max(roots))
    if "a.u." in exen[-1]:
-      last=-1
+      exen=exen[-nos:] 
    else:
-      last=-2
-   exen=exen[-nos+last:last] 
+      exen=exen[-nos-1:-1] 
    for i in range(len(exen)):
       eorb=float(exen[i].strip().split()[-4])
       #assert eorb>0, "The state %s seems unconverged. Negative excitation energies occured." %(infile)
@@ -654,8 +695,8 @@ def writePreamble(outfile, noocc,nouno, nbf,frozen, occi,occf, ftrans, itrans, f
    output.write("SFOCCPRINT\n0\n\n")
    output.write("SOCPRINT\n0\n\n")
    output.write("SOCOCCPRINT\n0\n\n")
-   output.write("FINALWF\n%d  %d\n\n"%(fstates, ftrans))
-   output.write("INITIALWF\n%d  %d\n\n"%(istates, itrans))
+   output.write("FINALWF\n%d  %d\n\n"%(fstates+1, ftrans))
+   output.write("INITIALWF\n%d  %d\n\n"%(istates+1, itrans))
    #output.write("INITIALWF\n1  1\n\n")
    output.close()
 
