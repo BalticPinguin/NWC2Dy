@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import sys
 from numpy import any
+import numpy as np
 import unrest_rw2dy as rw
 
 
@@ -16,8 +17,27 @@ def main(argv=None):
    outfile=argv[2]
    
    # read first quantities from input-files
-   fMO,fsort,occf=rw.readOrbitals(fnfile)
-   MO,sort,occi=rw.readOrbitals(infile)
+   fMO,fsort,occf,enf=rw.readOrbitals(fnfile)
+   MO,sort, occi, eni=rw.readOrbitals(infile)
+ 
+   lowen=0.8
+   highen=0.5
+   HOMO=np.max(np.where(occf[0]==1)) #HOMO==FNOOCC !?
+   low=np.max(np.where(enf[0][HOMO]-enf[0]>lowen))
+   high=np.min(np.where(enf[0]-enf[0][HOMO]>highen))
+#   print(lowboarder)
+#   print(highboarder)
+#
+#   print("final state\n alpha-occ alpha-en   beta-occ beta-en")
+#   for i in range(len(occf[0])):
+#      print(occf[0][i], enf[0][i], " ", occf[1][i], enf[1][i])
+#   print("\n\ninitial state\n alpha-occ alpha-en   beta-occ beta-en")
+#   for i in range(len(occf[0])):
+#      print(occi[0][i], eni[0][i], " ", occi[1][i], eni[1][i])
+   
+   #frozen=low+len(occf[0])-high
+   frozen=len(occf[0])-high
+
    #test, if everything is consistent so far
    if MO!=fMO:
       error=open("error.out", 'w')
@@ -36,17 +56,17 @@ def main(argv=None):
       "the numbers of initial/final electrons seem to be wrong:"+\
       " initial: %i final: %i" %(sum(occi[0]+occi[0]), sum(occf[0]+occf[1]))
 
-
  ######## this is the alternative way: read CI-vectors from extra files
  #  CIfile=getFile("CI-coefficients")
  #  CIcoeff, Citrans, noocc, nouno, nos=readCI(CIfile)
  ########
 
    #read CI-vectors
-   FCIcoeff, FCitrans, Fnoocc, Fnouno, Fnos,Ftrans=rw.readCI2(fnfile)
-   ICIcoeff, ICitrans, Inoocc, Inouno, Inos,Itrans=rw.readCI2(infile)
+   FCIcoeff, FCitrans, Fnoocc, Fnouno, Fnos,Ftrans=rw.readCI2(fnfile, low, high)
+   ICIcoeff, ICitrans, Inoocc, Inouno, Inos,Itrans=rw.readCI2(infile, low, high)
+
    #now, start writing to output-file
-   rw.writePreamble(outfile, Inoocc,Inouno, dim, sum(occi[0]+occi[1]),sum(occf[0]+occf[1]), Ftrans, Itrans, Fnos, Inos)
+   rw.writePreamble(outfile, Inoocc,Inouno, dim, frozen, sum(occi[0]+occi[1]), sum(occf[0]+occf[1]), Ftrans, Itrans, Fnos, Inos)
    rw.printOrbitals(fnfile,outfile,2,"f")
    rw.printOrbitals(infile,outfile,1,"i")
    rw.wOverlap(ov,dim,sort,outfile)

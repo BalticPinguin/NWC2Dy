@@ -178,11 +178,20 @@ def getOrbitals( MOvect ):
  #  print("\n\n")
    return sortMO, sort
 
+def getEn(MOvect):
+   NumOrbits=len(MOvect)
+   Energies=np.zeros(NumOrbits)
+   for ind in range(NumOrbits):
+      currMOv=re.findall(r"(?<=E\=)[\d \.\+\-D]+", MOvect[ind])
+      assert len(currMOv)==1, "There was an error reading occupation vector."
+      Energies[ind]=float(currMOv[0].replace("D","e"))
+   return Energies
+
 def getOcc(MOvect):
    NumOrbits=len(MOvect)
    occupation=np.zeros(NumOrbits, dtype=int)
    for ind in range(NumOrbits):
-      currMOv=re.findall(r"(?<=Occ\=)[\d \.\+\-D]", MOvect[ind])
+      currMOv=re.findall(r"(?<=Occ\=)[\d]", MOvect[ind])
       assert len(currMOv)==1, "There was an error reading occupation vector."
       occupation[ind]=int(currMOv[0])
    return occupation
@@ -299,7 +308,8 @@ def printCI2(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans
    output.close()
 
 def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans):
-   
+   """
+   """
    def Trans(transition, state, occ):
       """
       """
@@ -364,6 +374,8 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
       output.write("    Coef                      Weight\n")
       for j in range(trans): #trans is number of transitions
          #print first (counting) number
+         if CIcoeff[i][j]==0:
+            break # from now. only empty states follow.
          output.write("  %3d         "%(j+1))
          #print the occupation of the state
          sortstate=Trans(transition[j], statestr, occ)
@@ -484,7 +496,7 @@ def readCI(CIfile):
    cifi.close()
    return CIcoeff, CItrans, noocc, nouno, nos
 
-def readCI2(infile):
+def readCI2(infile, low, high):
    #open the file 
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
@@ -510,25 +522,33 @@ def readCI2(infile):
          #print(noorb)
          CIcoeff=np.zeros((nos,noorb))
          CItrans=np.zeros((noorb,4),dtype=int)
+      index=0
+      # due to the cutoff, the matrices will not be filled completely.
+      # This needs to be considered by printing later.
       for j in range(noorb):
          transition=CI[j].split()
-         CIcoeff[i][j]=transition[9]
+         #print(high, transition[6], transition[1], low) 
+         if int(transition[1])<low: #truncate expansion due to energies
+            continue
+         if int(transition[6])>high:
+            continue
+         CIcoeff[i][index]=transition[9]
          if transition[2]=="alpha":
-            CItrans[j][0]=transition[1]
+            CItrans[index][0]=transition[1]
          elif transition[2]=="beta":
-            CItrans[j][2]=transition[1]
+            CItrans[index][2]=transition[1]
          else:
             assert 1==2, "initial state unknown."
          if transition[7]=="alpha":
-            CItrans[j][1]=transition[6]
+            CItrans[index][1]=transition[6]
          elif transition[7]=="beta":
-            CItrans[j][3]=transition[6]
+            CItrans[index][3]=transition[6]
          else:
             assert 1==2, "final state unknown."
-         #print(CItrans[j])
+         index+=1
    noocc=int(max(np.max(CItrans[:].T[0]), np.max(CItrans[:].T[2])))
    nouno=int(max(np.max(CItrans[:].T[1]), np.max(CItrans[:].T[3])))-noocc
-   return CIcoeff, CItrans, noocc, nouno, nos, noorb
+   return CIcoeff, CItrans, noocc, nouno, nos, index-1
 
 def readOrbitals(infile):
    """ This function obtains a nwchem log-file (infile) and extracts the MO vectors from it (works only, if in nwchem
@@ -547,6 +567,7 @@ def readOrbitals(infile):
    aMOs, asort=getOrbitals(aMOvect[1] )
    #now, get the sorting and the first row to be printed
    aoccupation=getOcc(aMOvect[1:])
+   aenergies=getEn(aMOvect[1:])
 
    # repeat for beta-porbitals
    btemp=re.findall(b"(?<=DFT Final Beta Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=\n\n)", inp, re.M)[-1]
@@ -554,14 +575,16 @@ def readOrbitals(infile):
    bnbf=len(bMOvect)-1 
    bMOs, bsort=getOrbitals( bMOvect[1] )
    boccupation=getOcc(bMOvect[1:])
+   benergies=getEn(bMOvect[1:])
 
    #test, if asort==bsort. Should be always true, if no error in the programme or inconsistencies occured.
    if np.any(asort!=bsort):
       assert 1==2, "the sorting of alpha- and beta-orbitals doesn't coincide."
    # put other quantities in common vectors for returning
    occupation=[aoccupation, boccupation]
+   energies=[aenergies, benergies]
    MOs=[aMOs,bMOs]
-   return MOs, asort, occupation
+   return MOs, asort, occupation, energies
 
 def rOverlap(infile, sort):
    files=open(infile, "r")
@@ -610,7 +633,7 @@ def rwenergy(output, infile):
       #assert eorb>0, "The state %s seems unconverged. Negative excitation energies occured." %(infile)
       output.write("%15.10g\n"%(eorb+energy))
 
-def writePreamble(outfile, noocc,nouno, nbf, occi,occf, ftrans, itrans, fstates, istates):
+def writePreamble(outfile, noocc,nouno, nbf,frozen, occi,occf, ftrans, itrans, fstates, istates):
    output=open(outfile, 'w')
    output.write("MOLCAS\n0\n\n")
    output.write("ALPHABETA\n1\n\n")
@@ -621,8 +644,8 @@ def writePreamble(outfile, noocc,nouno, nbf, occi,occf, ftrans, itrans, fstates,
    output.write("INSPIN\n1\n\n")
    output.write("FMULT\n2\n\n")
    output.write("IMULT\n1\n\n")
-   output.write("NACTIVE\n%d\n\n"%(noocc+nouno))
-   output.write("NFROZEN\n0\n\n")
+   output.write("NACTIVE\n%d\n\n"%(noocc+nouno)) # the frozen ones are aleady exctracted
+   output.write("NFROZEN\n%d\n\n"%(frozen))
    output.write("FNACTEL\n%d\n\n"%(occf))
    output.write("INACTEL\n%d\n\n"%(occi))
    output.write("NBASF\n%d\n\n"%(nbf))
