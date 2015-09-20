@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3.4
 import re, mmap
 import numpy as np
 
@@ -27,7 +27,7 @@ def getCoefficients( MOvect ):
       for i in range(len(currMOv)):
          elements.append(currMOv[i].split())
          orbital_nr.append(int(elements[i][0]))
-
+      
       #resort elemnts by index
       index=np.argsort(orbital_nr)
       if ind==0:
@@ -373,6 +373,7 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
    for nomatter in range(noocc+nofree-10):
       output.write(" ")
    output.write("    Coef                      Weight\n")
+   
    # ground state-configuration:
    output.write("  %3d         "%(1))
    #print the occupation of the state
@@ -391,7 +392,7 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
       output.write("     %16.10g         %16.10g\n"%( 0.00, 0.0))
    output.write("\n\n")
 
-   #initial states:
+   #excited states:
    for i in range(states):
       output.write("STATE=%d \n" %(i+2))
       output.write("Det             Occupation  ")
@@ -412,6 +413,7 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
          #print the occupation of the state
          sortstate=Trans(transition[j], statestr, occ)
          
+         #print(transition[j], sortstate, j+2)
          output.write("%s"%sortstate)
          #print coefficient and weight
          output.write("     %16.10g         %16.10g\n"%( CIcoeff[i][j], CIcoeff[i][j]*CIcoeff[i][j]))
@@ -541,7 +543,7 @@ def readCI2(infile, low, high):
    #cicoeff=re.findall(r"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n]+", inp)
    cicoeff=re.findall(b"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n alpha beta XY]+", inp)
    if len(cicoeff)>nos:
-      cicoeff=cicoeff[-nos:] #this gives only last ci-vector
+      cicoeff=cicoeff[-nos-1:] #this gives only last ci-vector
    elif len(cicoeff)<nos:
       assert 1==2, "an error occured. Not all roots found."
    for i in range(nos):
@@ -562,12 +564,14 @@ def readCI2(infile, low, high):
          #print(high, transition[6], transition[1], low) 
          transition[1]=int(transition[1])
          transition[6]=int(transition[6])
-         if transition[1]<low: #truncate expansion due to energies
+         if transition[1]<=low: #truncate expansion due to energies
             continue
-         if transition[6]>high:
+         if transition[6]>=high:
             continue
          CIcoeff[i][index]=transition[9]
          if transition[2]=="alpha":
+            # due to '+1': transitions count from 1 to len, not python-style 
+            #  (this is behaviour as the read one, therefore wanted)
             CItrans[index][0]=transition[1]-low
          elif transition[2]=="beta":
             CItrans[index][2]=transition[1]-low
@@ -579,7 +583,7 @@ def readCI2(infile, low, high):
             CItrans[index][3]=transition[6]-low
          else:
             assert 1==2, "final state unknown."
-         #print(CItrans[index])
+         #print(CItrans[index], transition[1], transition[6])
          index+=1
    noocc=int(max(np.max(CItrans[:].T[0]), np.max(CItrans[:].T[2])))
    nouno=int(max(np.max(CItrans[:].T[1]), np.max(CItrans[:].T[3])))-noocc

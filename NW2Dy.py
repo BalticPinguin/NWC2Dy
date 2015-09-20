@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3.4
 import sys
 from numpy import any
 import numpy as np
@@ -21,7 +21,7 @@ def main(argv=None):
    fMO,fsort,occf,enf=rw.readOrbitals(fnfile)
    MO,sort, occi, eni=rw.readOrbitals(infile)
  
-   lowen=5.50
+   lowen=5.00
    highen=0.50
    HOMO=np.max(np.where(occf[0]==1)) #HOMO==FNOOCC !?
    try:
@@ -44,7 +44,7 @@ def main(argv=None):
 #      print(occi[0][i], eni[0][i], " ", occi[1][i], eni[1][i])
    
    #frozen=low+len(occf[0])-high
-   frozen=len(occf[0])-high+low
+   frozen=len(occf[0])-high+low+1 #since low=...-1 to make it index-corrected.
    if low==0:
       if high>0:
          occf[0]=occf[0][:high] #truncate occupation vectors accoringly.
