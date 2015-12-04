@@ -21,8 +21,8 @@ def main(argv=None):
    fMO,fsort,occf,enf=rw.readOrbitals(fnfile)
    MO,sort, occi, eni=rw.readOrbitals(infile)
  
-   lowen=5.00
-   highen=0.50
+   lowen=5000000
+   highen=500000
    HOMO=np.max(np.where(occf[0]==1)) #HOMO==FNOOCC !?
    try:
       low=np.max(np.where(enf[0][HOMO]-enf[0]>lowen))-1
