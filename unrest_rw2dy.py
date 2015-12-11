@@ -409,7 +409,7 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
          #print first (counting) number
          if CIcoeff[i][j]==0:
             break # from now. only empty states follow.
-         output.write("  %3d         "%(j+1))
+         output.write("  %3d         "%(j+2))
          #print the occupation of the state
          sortstate=Trans(transition[j], statestr, occ)
          
@@ -530,7 +530,7 @@ def readCI(CIfile):
    cifi.close()
    return CIcoeff, CItrans, noocc, nouno, nos
 
-def readCI2(infile, low, high):
+def readCI3(infile):
    #open the file 
    files=open(infile, "r")
    inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
@@ -561,26 +561,21 @@ def readCI2(infile, low, high):
       # This needs to be considered by printing later.
       for j in range(noorb):
          transition=CI[j].split()
-         #print(high, transition[6], transition[1], low) 
          transition[1]=int(transition[1])
          transition[6]=int(transition[6])
-         if transition[1]<=low: #truncate expansion due to energies
-            continue
-         if transition[6]>=high:
-            continue
          CIcoeff[i][index]=transition[9]
          if transition[2]=="alpha":
             # due to '+1': transitions count from 1 to len, not python-style 
             #  (this is behaviour as the read one, therefore wanted)
-            CItrans[index][0]=transition[1]-low
+            CItrans[index][0]=transition[1]
          elif transition[2]=="beta":
-            CItrans[index][2]=transition[1]-low
+            CItrans[index][2]=transition[1]
          else:
             assert 1==2, "initial state unknown."
          if transition[7]=="alpha":
-            CItrans[index][1]=transition[6]-low
+            CItrans[index][1]=transition[6]
          elif transition[7]=="beta":
-            CItrans[index][3]=transition[6]-low
+            CItrans[index][3]=transition[6]
          else:
             assert 1==2, "final state unknown."
          #print(CItrans[index], transition[1], transition[6])
@@ -588,6 +583,52 @@ def readCI2(infile, low, high):
    noocc=int(max(np.max(CItrans[:].T[0]), np.max(CItrans[:].T[2])))
    nouno=int(max(np.max(CItrans[:].T[1]), np.max(CItrans[:].T[3])))-noocc
    return CIcoeff, CItrans, noocc, nouno, nos, index-1
+
+def readCI2(infile):
+   #open the file 
+   files=open(infile, "r")
+   inp=mmap.mmap(files.fileno(), 0, prot=mmap.PROT_READ)
+   files.close()
+   
+   roots=re.findall(b"(?<=Root )[ \d]+", inp)
+   for i in range(len(roots)):
+      roots[i]=int(roots[i])
+   nos=np.max(roots)
+   #cicoeff=re.findall(r"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n]+", inp)
+   cicoeff=re.findall(b"(?<=Dipole Oscillator Strength )[Occ. Virt. abE\-\+\d\n alpha beta XY]+", inp)
+   if len(cicoeff)>nos:
+      cicoeff=cicoeff[-nos:] #this gives only last ci-vector
+   elif len(cicoeff)<nos:
+      assert 1==2, "an error occured. Not all roots found."
+   for i in range(nos):
+      CI=cicoeff[i].decode("utf-8").strip().split("\n")[2:] #split into lines and through first and last line away
+      if i==0:
+         if "Occ." in CI[-1]:
+            noorb=len(CI)
+         else:
+            noorb=len(CI)-1
+         #print(noorb)
+         CIcoeff=np.zeros((nos,noorb))
+         CItrans=np.zeros((noorb,4),dtype=int)
+      for j in range(noorb):
+         transition=CI[j].split()
+         CIcoeff[i][j]=transition[9]
+         if transition[2]=="alpha":
+            CItrans[j][0]=transition[1]
+         elif transition[2]=="beta":
+            CItrans[j][2]=transition[1]
+         else:
+            assert 1==2, "initial state unknown."
+         if transition[7]=="alpha":
+            CItrans[j][1]=transition[6]
+         elif transition[7]=="beta":
+            CItrans[j][3]=transition[6]
+         else:
+            assert 1==2, "final state unknown."
+         #print(CItrans[j])
+   noocc=int(max(np.max(CItrans[:].T[0]), np.max(CItrans[:].T[2])))
+   nouno=int(max(np.max(CItrans[:].T[1]), np.max(CItrans[:].T[3])))-noocc
+   return CIcoeff, CItrans, noocc, nouno, nos, noorb
 
 def readOrbitals(infile):
    """ This function obtains a nwchem log-file (infile) and extracts the MO vectors from it (works only, if in nwchem
