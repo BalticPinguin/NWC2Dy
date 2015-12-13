@@ -3,7 +3,7 @@ import re, mmap
 import numpy as np
 
 # changelog 0.3
-# 1) implemented cutoff-energies
+# 1) implemented cutoff-energies --> remove them again!
 # changelog 0.2
 # 1) converted to python3
 # 2) got running code for unrestricted system
@@ -27,7 +27,7 @@ def getCoefficients( MOvect ):
       for i in range(len(currMOv)):
          elements.append(currMOv[i].split())
          orbital_nr.append(int(elements[i][0]))
-      
+
       #resort elemnts by index
       index=np.argsort(orbital_nr)
       if ind==0:
@@ -366,7 +366,6 @@ def printCI(outfile, CIcoeff, transition,sort, noocc, nofree, states,occ, trans)
          statestr+="d"
       else:
          statestr+="0"
-  
    #ground state
    output.write("STATE=%d \n" %(1))
    output.write("Det             Occupation  ")
@@ -469,9 +468,7 @@ def printOrbitals(infile,outfile,mult,state):
    output.close
 
    #for beta-orbitals
-   btemp=re.findall(
-       b"(?<=DFT Final Alpha Molecular Orbital Analysis\n )[\w.=\+\- \n',^\"\d]+(?=DFT Final Beta)"
-       , inp, re.M)[0]
+   btemp=re.findall(b"(?<=DFT Final Beta Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=\n\n)", inp, re.M)[-1]
    bMOvect=btemp.decode("utf-8").strip().split("Vector")
    bnbf=len(bMOvect)-1 #because the first element is not an orbital vector
    bMOs, bsort=getOrbitals(bMOvect[1] )
@@ -650,7 +647,7 @@ def readOrbitals(infile):
    aenergies=getEn(aMOvect[1:])
 
    # repeat for beta-porbitals
-   btemp=re.findall(b"(?<=DFT Final Beta Molecular Orbital Analysis\n )[\d\w .=\+\- \n',^\"]+(?=\n\n)", inp, re.M)[-1]
+   btemp=re.findall(b"(?<=DFT Final Beta Molecular Orbital Analysis\n )[\d\w.=\+\- \n',^\"]+(?=\n\n)", inp, re.M)[-1]
    bMOvect=btemp.decode("utf-8").strip().split("Vector")
    bnbf=len(bMOvect)-1 
    bMOs, bsort=getOrbitals( bMOvect[1] )
