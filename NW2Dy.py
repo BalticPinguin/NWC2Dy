@@ -91,8 +91,8 @@ def main(argv=None):
    #print(frozen, high, low, Fnoocc, Fnouno)
 
    #renormalize vectors (due to cutoff)
-   FCIcoeff=rw.normalise(FCIcoeff)
-   ICIcoeff=rw.normalise(ICIcoeff)
+   #FCIcoeff=rw.normalise(FCIcoeff)
+   #ICIcoeff=rw.normalise(ICIcoeff)
 
    #now, start writing to output-file
    rw.writePreamble(outfile, Inoocc,Inouno, dim, frozen, sum(occi[0]+occi[1]), 

@@ -21,10 +21,14 @@ def getCoefficients( MOvect ):
                  atomic orbitals.
    """
    for ind in range(len(MOvect)):
-      currMOv=re.split('\n|            ', MOvect[ind].strip().split("---------------\n")[-1])
+      currMOv=re.split('\n|            ', MOvect[ind].strip().split("------------  ---------------\n")[-1])
       elements=[]
       orbital_nr=[]
+      #print(MOvect[ind])
       for i in range(len(currMOv)):
+         if currMOv[i].split()==[]:
+           #print(i)
+            break
          elements.append(currMOv[i].split())
          orbital_nr.append(int(elements[i][0]))
 
@@ -35,6 +39,7 @@ def getCoefficients( MOvect ):
       #fill elements into matrix
       for i in range(len(elements)):
          coeff[ind][i]=float(elements[index[i]][1])
+         #print(coeff[ind][i])
    return coeff
 
 def getFile(purpose):
@@ -436,7 +441,7 @@ def printOrbitals(infile,outfile,mult,state):
    #for alpha-orbitals
    atemp=re.findall(
        b"(?<=DFT Final Alpha Molecular Orbital Analysis\n )[\w.=\+\- \n',^\"\d]+(?=DFT Final Beta)"
-       , inp, re.M)[0]
+       , inp, re.M)[-1]
    aMOvect=atemp.decode("utf-8").strip().split("Vector")
    anbf=len(aMOvect)-1 #because the first element is not an orbital vector
    aMOs, asort=getOrbitals(aMOvect[1] )
@@ -546,11 +551,17 @@ def readCI3(infile):
    for i in range(nos):
       CI=cicoeff[i].decode("utf-8").strip().split("\n")[2:] #split into lines and through first and last line away
       if i==0:
-         if "Occ." in CI[-1]:
-            noorb=len(CI)
+         if CI.split()[-1]=='X' or CI.split()[-1]=='Y':
+            if "Occ." in CI[-1]:
+               noorb=len(CI)/2
+            else:
+               noorb=len(CI)/2-1
          else:
-            noorb=len(CI)-1
-         #print(noorb)
+            if "Occ." in CI[-1]:
+               noorb=len(CI)
+            else:
+               noorb=len(CI)-1
+            #print(noorb)
          CIcoeff=np.zeros((nos,noorb))
          CItrans=np.zeros((noorb,4),dtype=int)
       index=0
@@ -558,6 +569,9 @@ def readCI3(infile):
       # This needs to be considered by printing later.
       for j in range(noorb):
          transition=CI[j].split()
+         if transition[-1]=='Y':
+            #skip y-vector
+            continue
          transition[1]=int(transition[1])
          transition[6]=int(transition[6])
          CIcoeff[i][index]=transition[9]
@@ -600,15 +614,31 @@ def readCI2(infile):
    for i in range(nos):
       CI=cicoeff[i].decode("utf-8").strip().split("\n")[2:] #split into lines and through first and last line away
       if i==0:
-         if "Occ." in CI[-1]:
-            noorb=len(CI)
+         if CI[0].split()[-1]=='X' or CI[0].split()[-1]=='Y':
+            #print(CI[0])
+            if "Occ." in CI[-1]:
+               noorb=len(CI)/2
+            else:
+               noorb=(len(CI)-1)/2
+            assert noorb%1==0, "number of orbitals is not an integer."
+            noorb=int(noorb)
+            aoe=2
          else:
-            noorb=len(CI)-1
-         #print(noorb)
+            if "Occ." in CI[-1]:
+               noorb=len(CI)
+            else:
+               noorb=len(CI)-1
+            aoe=1
+            #print(noorb)
          CIcoeff=np.zeros((nos,noorb))
          CItrans=np.zeros((noorb,4),dtype=int)
-      for j in range(noorb):
-         transition=CI[j].split()
+      j=0
+      for count in range(noorb*aoe):
+         transition=CI[count].split()
+         if transition[-1]=='Y':
+            #skip y-vector
+            continue
+         #print(transition)
          CIcoeff[i][j]=transition[9]
          if transition[2]=="alpha":
             CItrans[j][0]=transition[1]
@@ -622,9 +652,15 @@ def readCI2(infile):
             CItrans[j][3]=transition[6]
          else:
             assert 1==2, "final state unknown."
-         #print(CItrans[j])
+         j+=1
+      if i==0:
+         np.set_printoptions(threshold=np.nan,linewidth=200)
+         #print(CIcoeff[i],"\n",np.sum(CIcoeff[i]*CIcoeff[i]))
+       #  for j in range(len(CIcoeff[i])):
+       #     print(j,CIcoeff[i][j])
    noocc=int(max(np.max(CItrans[:].T[0]), np.max(CItrans[:].T[2])))
    nouno=int(max(np.max(CItrans[:].T[1]), np.max(CItrans[:].T[3])))-noocc
+   #print("\n","\n")
    return CIcoeff, CItrans, noocc, nouno, nos, noorb
 
 def readOrbitals(infile):
@@ -664,6 +700,7 @@ def readOrbitals(infile):
    return MOs, asort, occupation, energies
 
 def normalise(coeff):
+   print(coeff[0])
    for i in range(len(coeff)): #renormalise
       norm=sum(coeff[i]*coeff[i])
       coeff[i]=coeff[i]/np.sqrt(norm)
@@ -737,8 +774,8 @@ def writePreamble(outfile, noocc,nouno, nbf,frozen, occi,occf, ftrans, itrans, f
    output.write("SFOCCPRINT\n0\n\n")
    output.write("SOCPRINT\n0\n\n")
    output.write("SOCOCCPRINT\n0\n\n")
-   output.write("FINALWF\n%d  %d\n\n"%(fstates+1, ftrans))
-   output.write("INITIALWF\n%d  %d\n\n"%(istates+1, itrans))
+   output.write("FINALWF\n%d  %d\n\n"%(fstates+1, ftrans+1))
+   output.write("INITIALWF\n%d  %d\n\n"%(istates+1, itrans+1))
    #output.write("INITIALWF\n1  1\n\n")
    output.close()
 
@@ -760,4 +797,5 @@ def wOverlap(overlap, dim,sort, outfile):
       output.write("\n\n")
    output.close
 
-version=0.3
+version=0.4
+

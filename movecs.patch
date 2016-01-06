@@ -8,9 +8,9 @@ Index: src/ddscf/movecs_pr_anal.F
   110     continue
 +
 +c the next two lines are added to have full output (Hubert)
-+         ilo=1  
-+         ihi=nbf
-          do i = ilo, ihi
+-          do i = ilo, ihi
++          do i = 1, nmo
++ c  changed to print all orbitals (Hubert)
  c
              call ga_get(g_vecs, 1, nbf, i, i, dbl_mb(k_vecs), 1)
  c
